@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+components:
+  - ../../components/kafka
+  - ../../components/opensearch
+  - ../../components/namespace
+  - ../../components/redis
+
+patchesJson6902:
+- target:
+    group: template.openshift.io
+    kind: Template
+    version: v1
+    name: assisted-events-stream-projection
+  path: redis-secret.yaml
+- target:
+    group: template.openshift.io
+    kind: Template
+    version: v1
+    name: assisted-events-stream-projection
+  path: opensearch-secrets.yaml
+- target:
+    group: template.openshift.io
+    kind: Template
+    version: v1
+    name: assisted-events-stream-projection
+  path: kafka-secrets.yaml
+- target:
+    group: template.openshift.io
+    kind: Template
+    version: v1
+    name: assisted-events-stream-projection
+  path: parameters.yaml

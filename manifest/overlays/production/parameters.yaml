@@ -1,0 +1,5 @@
+- op: add
+  path: /parameters/0
+  value:
+    name: IMAGE_PULL_POLICY
+    value: "Always"

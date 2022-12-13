@@ -1,0 +1,41 @@
+BUILD_IMAGE ?= assisted-events-streams:latest
+NAMESPACE ?= assisted-events-streams
+IMAGE_NAME ?= quay.io/edge-infrastructure/assisted-events-stream
+IMAGE_TAG ?= latest
+KIND_CLUSTER_NAME ?= assisted-events-streams
+
+.PHONY: all
+all: validate
+
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.PHONY: docker-build
+docker-build: ## Build docker image
+	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f Dockerfile .
+
+.PHONY: kind-create-cluster
+kind-create-cluster: ## Create kind cluster
+	kind create cluster --name $(KIND_CLUSTER_NAME) 2>/dev/null ||:
+
+.PHONY: kind-load-docker
+kind-load-docker: docker-build ## Load docker image into the kind cluster
+	kind load docker-image --name $(KIND_CLUSTER_NAME) $(IMAGE_NAME):$(IMAGE_TAG)
+
+.PHONY: deploy-all
+deploy-all: kind-create-cluster kind-load-docker ## Deploy locally all necessary components
+	oc create --save-config ns ${NAMESPACE} ||:
+	oc kustomize manifest/overlays/dev/ | oc process -p IMAGE_NAME=$(IMAGE_NAME) -p IMAGE_TAG=$(IMAGE_TAG) --local -f - | oc apply -n $(NAMESPACE) -f -
+
+.PHONY: generate-template
+generate-template: ## Generate template in openshift/template.yaml
+	oc kustomize manifest/overlays/production/ > openshift/template.yaml
+
+.PHONY: generate-mocks
+generate-mocks: ## Generate mocks
+	go generate ./...
+
+.PHONY: unit-test
+unit-test: generate-mocks ## Run unit tests
+	ginkgo -r

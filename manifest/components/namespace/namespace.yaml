@@ -1,0 +1,7 @@
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${NAMESPACE}

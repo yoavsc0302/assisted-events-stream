@@ -1,0 +1,108 @@
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: assisted-events-stream-projection
+parameters:
+- name: REPLICAS_COUNT
+  value: "1"
+- name: IMAGE_NAME
+  value: "quay.io/edge-infrastructure/assisted-events-stream"
+- name: IMAGE_TAG
+  value: "latest"
+- name: CPU_LIMIT
+  value: "1"
+- name: CPU_REQUEST
+  value: "10m"
+- name: MEMORY_LIMIT
+  value: "512Mi"
+- name: MEMORY_REQUEST
+  value: "256Mi"
+- name: NAMESPACE
+  value: assisted-events-streams
+- name: KAFKA_EVENT_STREAM_TOPIC
+  value: "events-stream-integration"
+- name: KAFKA_GROUP_ID
+  value: "enriched-event-projection"
+- name: REDIS_ADDRESS
+  value: "assisted-events-streams-redis-master:6379"
+- name: REDIS_CREDENTIALS_SECRETNAME
+  value: redis-credentials
+- name: OPENSEARCH_CREDENTIALS_SECRETNAME
+  value: elastic-master-credentials
+- name: OPENSEARCH_ENDPOINT_SECRETNAME
+  value: assisted-installer-elasticsearch
+- name: OPENSEARCH_INDEX_PREFIX
+  value: assisted-installer-events-v1-
+- name: KAFKA_CREDENTIALS_SECRETNAME
+  value: assisted-installer-event-stream
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: enriched-event-projection
+  spec:
+    selector:
+      matchLabels:
+        app: enriched-event-projection
+    replicas: ${{REPLICAS_COUNT}}
+    template:
+      metadata:
+        labels:
+          app: enriched-event-projection
+      spec:
+        containers:
+        - name: projection
+          image: ${IMAGE_NAME}:${IMAGE_TAG}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command:
+          - /projection
+          resources:
+            limits:
+              cpu: ${CPU_LIMIT}
+              memory: ${MEMORY_LIMIT}
+            requests:
+              cpu: ${CPU_REQUEST}
+              memory: ${MEMORY_REQUEST}
+          env:            
+          - name: KAFKA_EVENT_STREAM_TOPIC
+            value: ${KAFKA_EVENT_STREAM_TOPIC}
+          - name: KAFKA_GROUP_ID
+            value: ${KAFKA_GROUP_ID}
+          - name: KAFKA_BOOTSTRAP_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: ${KAFKA_CREDENTIALS_SECRETNAME}
+                key: bootstrap_server_host
+          - name: KAFKA_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: ${KAFKA_CREDENTIALS_SECRETNAME}
+                key: client_id
+          - name: KAFKA_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: ${KAFKA_CREDENTIALS_SECRETNAME}
+                key: client_secret
+          - name: REDIS_ADDRESS
+            value: ${REDIS_ADDRESS}
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ${REDIS_CREDENTIALS_SECRETNAME}
+                key: password
+          - name: OPENSEARCH_ADDRESS
+            valueFrom:
+              secretKeyRef:
+                key: endpoint
+                name: ${OPENSEARCH_ENDPOINT_SECRETNAME}
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: master_user_name
+                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: master_user_password
+                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}

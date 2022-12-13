@@ -1,0 +1,4 @@
+manifest/*
+openshift/*
+terraform/*
+README.md
