@@ -12,6 +12,6 @@ make docker-build
 DOCKER_CONF="$PWD/assisted/.docker"
 mkdir -p "$DOCKER_CONF"
 docker --config="$DOCKER_CONF" login -u="${QUAY_USER}" -p="${QUAY_TOKEN}" quay.io
-docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "${REPO}:latest"
+docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "${IMAGE_NAME}:latest"
 docker --config="$DOCKER_CONF" push "${IMAGE_NAME}:${IMAGE_TAG}"
-docker --config="$DOCKER_CONF" push "${REPO}:latest"
+docker --config="$DOCKER_CONF" push "${IMAGE_NAME}:latest"
