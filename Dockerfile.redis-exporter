@@ -1,1 +1,1 @@
-FROM docker.io/bitnami/redis-exporter:1.37.0-debian-10-r63
+FROM quay.io/edge-infrastructure/redis-exporter:1.37.0-debian-10-r63

@@ -1,1 +1,1 @@
-FROM docker.io/bitnami/redis:6.2.7-debian-10-r23
+FROM quay.io/edge-infrastructure/redis:6.2.7-debian-10-r23
