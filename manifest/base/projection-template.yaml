@@ -92,6 +92,8 @@ objects:
               secretKeyRef:
                 name: ${REDIS_CREDENTIALS_SECRETNAME}
                 key: password
+          - name: OPENSEARCH_INDEX_PREFIX
+            value: "${OPENSEARCH_INDEX_PREFIX}"
           - name: OPENSEARCH_ADDRESS
             valueFrom:
               secretKeyRef:

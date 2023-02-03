@@ -22,16 +22,6 @@ resource "rhoas_service_account" "svc-account-integration" {
   ]
 }
 
-resource "rhoas_topic" "events-stream" {
-  name       = "events-stream"
-  partitions = 6
-  kafka_id   = rhoas_kafka.ai-events-stream-stage.id
-
-  depends_on = [
-    rhoas_kafka.ai-events-stream-stage
-  ]
-}
-
 resource "rhoas_topic" "events-stream-integration" {
   name       = "events-stream-integration"
   partitions = 6
@@ -56,7 +46,7 @@ resource "rhoas_acl" "acl-integration" {
 
 }
 
-resource "rhoas_acl" "acl-integration-group" {
+resource "rhoas_acl" "acl-dev-group" {
   kafka_id = rhoas_kafka.ai-events-stream-stage.id
   operation_type = "ALL"
   resource_type = "GROUP"
@@ -68,6 +58,19 @@ resource "rhoas_acl" "acl-integration-group" {
     rhoas_topic.events-stream-integration
   ]
 
+}
+
+resource "rhoas_acl" "acl-integration-group" {
+  kafka_id = rhoas_kafka.ai-events-stream-stage.id
+  operation_type = "ALL"
+  resource_type = "GROUP"
+  pattern_type = "LITERAL"
+  permission_type = "ALLOW"
+  resource_name = "enriched-event-projection-integration"
+  principal = rhoas_service_account.svc-account-integration.id
+  depends_on = [
+    rhoas_topic.events-stream-integration
+  ]
 }
 
 output "bootstrap_server_stage" {

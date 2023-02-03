@@ -8,3 +8,23 @@
   value:
     name: REDIS_STORAGE
     value: "100Gi"
+- op: add
+  path: /parameters/0
+  value:
+    name: REDIS_IMAGE_NAME
+    value: quay.io/edge-infrastructure/redis
+- op: add
+  path: /parameters/0
+  value:
+    name: REDIS_IMAGE_TAG
+    value: 6.2.7-debian-10-r23
+- op: add
+  path: /parameters/0
+  value:
+    name: REDIS_EXPORTER_IMAGE_NAME
+    value: quay.io/edge-infrastructure/redis-exporter
+- op: add
+  path: /parameters/0
+  value:
+    name: REDIS_EXPORTER_IMAGE_TAG
+    value: 1.37.0-debian-10-r63

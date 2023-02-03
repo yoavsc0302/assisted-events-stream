@@ -56,7 +56,7 @@ objects:
             value: "no"
           - name: REDIS_PORT
             value: "6379"
-          image: quay.io/edge-infrastructure/redis:6.2.7-debian-10-r23
+          image: ${REDIS_IMAGE_NAME}:${REDIS_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
@@ -88,7 +88,7 @@ objects:
             limits: {}
             requests: {}
           securityContext:
-            runAsUser: 1001
+            runAsNonRoot: true
           volumeMounts:
           - mountPath: /opt/bitnami/scripts/start-scripts
             name: start-scripts
@@ -121,7 +121,7 @@ objects:
               secretKeyRef:
                 key: password
                 name: ${REDIS_CREDENTIALS_SECRETNAME}
-          image: quay.io/edge-infrastructure/redis-exporter:1.37.0-debian-10-r63
+          image: ${REDIS_EXPORTER_IMAGE_NAME}:${REDIS_EXPORTER_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           name: metrics
           ports:
@@ -131,7 +131,7 @@ objects:
             limits: {}
             requests: {}
           securityContext:
-            runAsUser: 1001
+            runAsNonRoot: true
           volumeMounts: null
         terminationGracePeriodSeconds: 30
         volumes:
@@ -452,6 +452,14 @@ objects:
               cpu: ${CPU_REQUEST}
               memory: ${MEMORY_REQUEST}
 parameters:
+- name: REDIS_EXPORTER_IMAGE_TAG
+  value: 1.37.0-debian-10-r63
+- name: REDIS_EXPORTER_IMAGE_NAME
+  value: quay.io/edge-infrastructure/redis-exporter
+- name: REDIS_IMAGE_TAG
+  value: 6.2.7-debian-10-r23
+- name: REDIS_IMAGE_NAME
+  value: quay.io/edge-infrastructure/redis
 - name: REDIS_STORAGE
   value: 100Gi
 - name: IMAGE_PULL_POLICY
