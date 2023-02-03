@@ -3,6 +3,10 @@ NAMESPACE ?= assisted-events-streams
 IMAGE_NAME ?= quay.io/edge-infrastructure/assisted-events-stream
 IMAGE_TAG ?= latest
 KIND_CLUSTER_NAME ?= assisted-events-streams
+REDIS_IMAGE_NAME ?= "quay.io/edge-infrastructure/redis"
+REDIS_IMAGE_TAG ?= 6.2.7-debian-10-r23
+REDIS_EXPORTER_IMAGE_NAME ?= "quay.io/edge-infrastructure/redis-exporter"
+REDIS_EXPORTER_IMAGE_TAG ?= 1.37.0-debian-10-r63
 
 .PHONY: all
 all: validate
@@ -14,6 +18,11 @@ help: ## Display this help.
 .PHONY: docker-build
 docker-build: ## Build docker image
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f Dockerfile .
+
+.PHONY: redis-docker-build
+redis-docker-build: ## Build docker image
+	docker build -t $(REDIS_IMAGE_NAME):$(REDIS_IMAGE_TAG) -f Dockerfile.redis .
+	docker build -t $(REDIS_EXPORTER_IMAGE_NAME):$(REDIS_EXPORTER_IMAGE_TAG) -f Dockerfile.redis-exporter .
 
 .PHONY: kind-create-cluster
 kind-create-cluster: ## Create kind cluster
