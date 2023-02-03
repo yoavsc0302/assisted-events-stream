@@ -9,7 +9,8 @@ parameters:
 - name: IMAGE_NAME
   value: "quay.io/edge-infrastructure/assisted-events-stream"
 - name: IMAGE_TAG
-  value: "latest"
+  value: ""
+  required: true
 - name: CPU_LIMIT
   value: "1"
 - name: CPU_REQUEST
@@ -25,7 +26,7 @@ parameters:
 - name: KAFKA_GROUP_ID
   value: "enriched-event-projection"
 - name: REDIS_ADDRESS
-  value: "assisted-events-streams-redis-master:6379"
+  value: "assisted-events-streams-redis:6379"
 - name: REDIS_CREDENTIALS_SECRETNAME
   value: redis-credentials
 - name: OPENSEARCH_CREDENTIALS_SECRETNAME
@@ -44,12 +45,12 @@ objects:
   spec:
     selector:
       matchLabels:
-        app: enriched-event-projection
+          app.kubernetes.io/name: enriched-event-projection
     replicas: ${{REPLICAS_COUNT}}
     template:
       metadata:
         labels:
-          app: enriched-event-projection
+          app.kubernetes.io/name: enriched-event-projection
       spec:
         containers:
         - name: projection

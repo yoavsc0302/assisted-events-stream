@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - ../../base
+components:
+  - ../../components/redis
 patchesJson6902:
 - target:
     group: template.openshift.io

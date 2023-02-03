@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -62,5 +63,8 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 }
 
 func (r *EnrichedEventRepository) getIndexName(eventTime string) string {
-	return r.indexPrefix + eventTime
+	t, _ := time.Parse(time.RFC3339, eventTime)
+	indexSuffix := fmt.Sprintf("%d-%02d", t.Year(), t.Month())
+
+	return r.indexPrefix + indexSuffix
 }

@@ -197,13 +197,10 @@
     apiVersion: v1
     kind: Service
     metadata:
-      name: assisted-events-streams-redis-master
+      name: assisted-events-streams-redis
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/component: master
     spec:
       type: ClusterIP
       internalTrafficPolicy: Cluster
@@ -216,7 +213,6 @@
       selector:
         app.kubernetes.io/name: redis
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/component: master
 - op: add
   path: /objects/0
   value:
@@ -226,9 +222,7 @@
       name: assisted-events-streams-redis-metrics
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: metrics
     spec:
       type: ClusterIP
@@ -246,20 +240,16 @@
     apiVersion: apps/v1
     kind: StatefulSet
     metadata:
-      name: assisted-events-streams-redis-master
+      name: assisted-events-streams-redis
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/component: master
     spec:
       replicas: 1
       selector:
         matchLabels:
           app.kubernetes.io/name: redis
           app.kubernetes.io/instance: assisted-events-streams
-          app.kubernetes.io/component: master
       serviceName: assisted-events-streams-redis-headless
       updateStrategy:
         rollingUpdate: {}
@@ -268,34 +258,19 @@
         metadata:
           labels:
             app.kubernetes.io/name: redis
-            helm.sh/chart: redis-16.10.0
             app.kubernetes.io/instance: assisted-events-streams
-            app.kubernetes.io/managed-by: Helm
-            app.kubernetes.io/component: master
-          annotations:
-            checksum/configmap: 399cd19f3ec12b24476fb410647e1531574fcb8961be896e0c4a4b8faf043eb9
-            checksum/health: 4303f68096dbb06270d2e8b7fabab3825f88e4678107b1fe79a835cf6d15baf3
-            checksum/scripts: f950f48055985093b657e7f15d6a2cd85ac0d8e76e0f45ea9dcf62bb6a2aa287
-            checksum/secret: bed3b2628f27bee29f48c2d9127614bb7e0f2124d1f103293ccd47e737124836
-            prometheus.io/port: "9121"
-            prometheus.io/scrape: "true"
         spec:
           affinity:
             podAffinity:
-              
-            podAntiAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
                 - podAffinityTerm:
                     labelSelector:
                       matchLabels:
-                        app.kubernetes.io/name: redis
-                        app.kubernetes.io/instance: assisted-events-streams
-                        app.kubernetes.io/component: master
+                        app.kubernetes.io/name: enriched-event-projection
                     namespaces:
                       - "${NAMESPACE}"
                     topologyKey: kubernetes.io/hostname
                   weight: 1
-            nodeAffinity:
               
           terminationGracePeriodSeconds: 30
           containers:
@@ -420,10 +395,9 @@
             labels:
               app.kubernetes.io/name: redis
               app.kubernetes.io/instance: assisted-events-streams
-              app.kubernetes.io/component: master
           spec:
             accessModes:
               - "ReadWriteOnce"
             resources:
               requests:
-                storage: "8Gi"
+                storage: "${REDIS_STORAGE}"

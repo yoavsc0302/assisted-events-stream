@@ -3,3 +3,8 @@
   value:
     name: IMAGE_PULL_POLICY
     value: "Never"
+- op: add
+  path: /parameters/0
+  value:
+    name: REDIS_STORAGE
+    value: 8Gi
