@@ -21,5 +21,5 @@ docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "${IMAGE_NAME}:latest"
 docker --config="$DOCKER_CONF" push "${IMAGE_NAME}:${IMAGE_TAG}"
 docker --config="$DOCKER_CONF" push "${IMAGE_NAME}:latest"
 
-docker --config="$DOCKER_CONF" push "${REDIS_EXPORTER_IMAGE_NAME}:${REDIS_EXPORTER_IMAGE_TAG}"
-docker --config="$DOCKER_CONF" push "${REDIS_IMAGE_NAME}:${REDIS_IMAGE_TAG}"
+#docker --config="$DOCKER_CONF" push "${REDIS_EXPORTER_IMAGE_NAME}:${REDIS_EXPORTER_IMAGE_TAG}"
+#docker --config="$DOCKER_CONF" push "${REDIS_IMAGE_NAME}:${REDIS_IMAGE_TAG}"
