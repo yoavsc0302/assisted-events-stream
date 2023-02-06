@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"strings"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	kafka "github.com/segmentio/kafka-go"
@@ -42,11 +43,12 @@ func NewKafkaReader(logger *logrus.Logger) (*KafkaReader, error) {
 	}
 	brokers := strings.Split(envConfig.BootstrapServer, ",")
 	config := kafka.ReaderConfig{
-		Brokers:  brokers,
-		Topic:    envConfig.Topic,
-		MinBytes: MinBytes,
-		MaxBytes: MaxBytes,
-		GroupID:  envConfig.GroupID,
+		Brokers:        brokers,
+		Topic:          envConfig.Topic,
+		MinBytes:       MinBytes,
+		MaxBytes:       MaxBytes,
+		GroupID:        envConfig.GroupID,
+		CommitInterval: time.Second * 10,
 	}
 	if envConfig.ClientID != "" && envConfig.ClientSecret != "" {
 		mechanism := &plain.Mechanism{
