@@ -7,9 +7,7 @@
       name: assisted-events-streams-redis-configuration
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
     data:
       redis.conf: |-
         # User-supplied common configuration:
@@ -40,9 +38,7 @@
       name: assisted-events-streams-redis-health
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
     data:
       ping_readiness_local.sh: |-
         #!/bin/bash
@@ -147,9 +143,7 @@
       name: assisted-events-streams-redis-scripts
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
     data:
       start-master.sh: |
         #!/bin/bash
@@ -176,11 +170,7 @@
       name: assisted-events-streams-redis-headless
       labels:
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.10.0
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/managed-by: Helm
-      annotations:
-        
     spec:
       type: ClusterIP
       clusterIP: None
