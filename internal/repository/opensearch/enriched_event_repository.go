@@ -1,4 +1,4 @@
-package repository
+package opensearch
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//go:generate mockgen -source=enriched_event_repository.go -package=repository -destination=mock_enriched_event_repository.go
+//go:generate mockgen -source=enriched_event_repository.go -package=opensearch -destination=mock_enriched_event_repository.go
 
 type EnrichedEventRepositoryInterface interface {
 	Store(ctx context.Context, enrichedEvent *types.EnrichedEvent) error

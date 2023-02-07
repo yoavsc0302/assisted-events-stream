@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	//"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +11,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	opensearch "github.com/opensearch-project/opensearch-go"
 	"github.com/openshift-assisted/assisted-events-streams/internal/projection"
-	"github.com/openshift-assisted/assisted-events-streams/internal/repository"
+	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
+	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
 	"github.com/openshift-assisted/assisted-events-streams/internal/utils"
 	"github.com/openshift-assisted/assisted-events-streams/pkg/stream"
 	"github.com/sirupsen/logrus"
@@ -68,15 +68,15 @@ func NewRedisClientFromEnv(ctx context.Context, logger *logrus.Logger) *redis.Cl
 	return client
 }
 
-func NewEnrichedEventRepositoryFromEnv(logger *logrus.Logger) *repository.EnrichedEventRepository {
+func NewEnrichedEventRepositoryFromEnv(logger *logrus.Logger) *opensearch_repo.EnrichedEventRepository {
 	indexPrefix := os.Getenv("OPENSEARCH_INDEX_PREFIX")
 	opensearch := NewOpensearchClientFromEnv(logger)
-	return repository.NewEnrichedEventRepository(logger, opensearch, indexPrefix)
+	return opensearch_repo.NewEnrichedEventRepository(logger, opensearch, indexPrefix)
 }
 
-func NewSnapshotRepositoryFromEnv(ctx context.Context, logger *logrus.Logger) *repository.SnapshotRepository {
+func NewSnapshotRepositoryFromEnv(ctx context.Context, logger *logrus.Logger) *redis_repo.SnapshotRepository {
 	redis := NewRedisClientFromEnv(ctx, logger)
-	return repository.NewSnapshotRepository(logger, redis)
+	return redis_repo.NewSnapshotRepository(logger, redis)
 }
 
 func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger) *projection.EnrichedEventsProjection {

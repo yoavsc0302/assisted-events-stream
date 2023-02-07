@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openshift-assisted/assisted-events-streams/internal/repository"
+	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
+	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
@@ -21,11 +22,11 @@ const (
 type EnrichedEventsProjection struct {
 	logger                  *logrus.Logger
 	eventEnricher           EventEnricherInterface
-	snapshotRepository      repository.SnapshotRepositoryInterface
-	enrichedEventRepository repository.EnrichedEventRepositoryInterface
+	snapshotRepository      redis_repo.SnapshotRepositoryInterface
+	enrichedEventRepository opensearch_repo.EnrichedEventRepositoryInterface
 }
 
-func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo repository.SnapshotRepositoryInterface, enrichedEventRepo repository.EnrichedEventRepositoryInterface) *EnrichedEventsProjection {
+func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface) *EnrichedEventsProjection {
 	eventEnricher := NewEventEnricher(logger)
 	return &EnrichedEventsProjection{
 		logger:                  logger,

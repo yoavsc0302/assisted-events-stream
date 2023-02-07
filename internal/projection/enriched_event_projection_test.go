@@ -8,7 +8,8 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/openshift-assisted/assisted-events-streams/internal/repository"
+	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
+	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
@@ -21,8 +22,8 @@ var _ = Describe("Process message", func() {
 		logger                *logrus.Logger
 		projection            *EnrichedEventsProjection
 		mockEnricher          *MockEventEnricherInterface
-		mockSnapshotRepo      *repository.MockSnapshotRepositoryInterface
-		mockEnrichedEventRepo *repository.MockEnrichedEventRepositoryInterface
+		mockSnapshotRepo      *redis_repo.MockSnapshotRepositoryInterface
+		mockEnrichedEventRepo *opensearch_repo.MockEnrichedEventRepositoryInterface
 		mockCluster           map[string]interface{}
 		mockHosts             []map[string]interface{}
 		mockInfraEnvs         []map[string]interface{}
@@ -33,8 +34,8 @@ var _ = Describe("Process message", func() {
 		logger.Out = ioutil.Discard
 		ctx = context.Background()
 		ctrl = gomock.NewController(GinkgoT())
-		mockSnapshotRepo = repository.NewMockSnapshotRepositoryInterface(ctrl)
-		mockEnrichedEventRepo = repository.NewMockEnrichedEventRepositoryInterface(ctrl)
+		mockSnapshotRepo = redis_repo.NewMockSnapshotRepositoryInterface(ctrl)
+		mockEnrichedEventRepo = opensearch_repo.NewMockEnrichedEventRepositoryInterface(ctrl)
 		mockEnricher = NewMockEventEnricherInterface(ctrl)
 		projection = &EnrichedEventsProjection{
 			logger:                  logger,

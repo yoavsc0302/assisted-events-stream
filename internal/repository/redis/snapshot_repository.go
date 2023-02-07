@@ -1,4 +1,4 @@
-package repository
+package redis
 
 import (
 	"context"
@@ -15,7 +15,7 @@ const (
 	InfraEnvsRedisHKeyPrefix = "infraenvs_"
 )
 
-//go:generate mockgen -source=snapshot_repository.go -package=repository -destination=mock_snapshot_repository.go
+//go:generate mockgen -source=snapshot_repository.go -package=redis -destination=mock_snapshot_repository.go
 
 type SnapshotRepositoryInterface interface {
 	SetCluster(ctx context.Context, clusterID string, event *types.Event) error
