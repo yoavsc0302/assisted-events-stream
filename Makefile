@@ -43,6 +43,7 @@ generate-template: ## Generate template in openshift/template.yaml
 
 .PHONY: generate-mocks
 generate-mocks: ## Generate mocks
+	find -name 'mock_*' -delete
 	go generate ./...
 
 .PHONY: unit-test

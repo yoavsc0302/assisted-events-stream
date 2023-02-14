@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/openshift-assisted/assisted-events-streams/internal/projection/process"
 	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
 	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
@@ -19,6 +20,12 @@ const (
 	InfraEnvState = "InfraEnv"
 )
 
+//go:generate mockgen -source=enriched_event_projection.go -package=projection -destination=mock_event_enricher.go
+
+type EventEnricherInterface interface {
+	GetEnrichedEvent(event *types.Event, cluster map[string]interface{}, hosts []map[string]interface{}, infraEnvs []map[string]interface{}) *types.EnrichedEvent
+}
+
 type EnrichedEventsProjection struct {
 	logger                  *logrus.Logger
 	eventEnricher           EventEnricherInterface
@@ -27,7 +34,7 @@ type EnrichedEventsProjection struct {
 }
 
 func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface) *EnrichedEventsProjection {
-	eventEnricher := NewEventEnricher(logger)
+	eventEnricher := process.NewEventEnricher(logger)
 	return &EnrichedEventsProjection{
 		logger:                  logger,
 		eventEnricher:           eventEnricher,
@@ -47,21 +54,21 @@ func (p *EnrichedEventsProjection) ProcessMessage(ctx context.Context, msg *kafk
 
 func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *types.Event) error {
 
-	var process func(ctx context.Context, event *types.Event) error
+	var processFn func(ctx context.Context, event *types.Event) error
 	switch event.Name {
 	case ClusterEvent:
-		process = p.ProcessClusterEvent
+		processFn = p.ProcessClusterEvent
 	case ClusterState:
-		process = p.ProcessClusterState
+		processFn = p.ProcessClusterState
 	case HostState:
-		process = p.ProcessHostState
+		processFn = p.ProcessHostState
 	case InfraEnvState:
-		process = p.ProcessInfraEnvState
+		processFn = p.ProcessInfraEnvState
 	default:
 		return fmt.Errorf("Unknown event name: %s (%s)", event.Name, event.Payload)
 	}
-	err := process(ctx, event)
-	if _, ok := err.(*MalformedEventError); ok {
+	err := processFn(ctx, event)
+	if _, ok := err.(*process.MalformedEventError); ok {
 		p.logger.WithError(err).Warn("malformed event discarded")
 		return nil
 	}
@@ -69,7 +76,7 @@ func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *type
 }
 
 func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, event *types.Event) error {
-	clusterID, err := getValueFromPayload("cluster_id", event.Payload)
+	clusterID, err := process.GetValueFromPayload("cluster_id", event.Payload)
 	if err != nil {
 		return err
 	}
@@ -106,7 +113,7 @@ func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, even
 }
 
 func (p *EnrichedEventsProjection) ProcessClusterState(ctx context.Context, event *types.Event) error {
-	clusterID, err := getValueFromPayload("id", event.Payload)
+	clusterID, err := process.GetValueFromPayload("id", event.Payload)
 	if err != nil {
 		return err
 	}
@@ -114,11 +121,11 @@ func (p *EnrichedEventsProjection) ProcessClusterState(ctx context.Context, even
 }
 
 func (p *EnrichedEventsProjection) ProcessHostState(ctx context.Context, event *types.Event) error {
-	hostID, err := getValueFromPayload("id", event.Payload)
+	hostID, err := process.GetValueFromPayload("id", event.Payload)
 	if err != nil {
 		return err
 	}
-	clusterID, err := getValueFromPayload("cluster_id", event.Payload)
+	clusterID, err := process.GetValueFromPayload("cluster_id", event.Payload)
 	if err != nil {
 		return err
 	}
@@ -126,28 +133,17 @@ func (p *EnrichedEventsProjection) ProcessHostState(ctx context.Context, event *
 }
 
 func (p *EnrichedEventsProjection) ProcessInfraEnvState(ctx context.Context, event *types.Event) error {
-	infraEnvID, err := getValueFromPayload("id", event.Payload)
+	infraEnvID, err := process.GetValueFromPayload("id", event.Payload)
 	if err != nil {
 		return err
 	}
 
-	clusterID, err := getValueFromPayload("cluster_id", event.Payload)
+	clusterID, err := process.GetValueFromPayload("cluster_id", event.Payload)
 	if err != nil {
 		return err
 	}
 
 	return p.snapshotRepository.SetInfraEnv(ctx, clusterID, infraEnvID, event)
-}
-
-func getValueFromPayload(key string, payload interface{}) (string, error) {
-	if payload, ok := (payload).(map[string]interface{}); ok {
-		if v, ok := payload[key]; ok {
-			if value, ok := v.(string); ok {
-				return value, nil
-			}
-		}
-	}
-	return "", NewMalformedEventError(fmt.Sprintf("Error retrieving key %s from payload (%v)", key, payload))
 }
 
 func getEventFromMessage(msg *kafka.Message) (*types.Event, error) {
