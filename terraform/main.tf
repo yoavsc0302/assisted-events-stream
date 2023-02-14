@@ -81,6 +81,35 @@ resource "rhoas_acl" "acl-integration-group" {
   ]
 }
 
+resource "rhoas_acl" "acl-stage" {
+  kafka_id = rhoas_kafka.ai-events-stream-stage.id
+  operation_type = "ALL"
+  resource_type = "TOPIC"
+  pattern_type = "LITERAL"
+  permission_type = "ALLOW"
+  resource_name = rhoas_topic.events-stream-stage.name
+  principal = rhoas_service_account.svc-account-stage.id
+  depends_on = [
+    rhoas_service_account.svc-account-stage,
+    rhoas_topic.events-stream-stage,
+  ]
+
+}
+
+resource "rhoas_acl" "acl-stage-group" {
+  kafka_id = rhoas_kafka.ai-events-stream-stage.id
+  operation_type = "ALL"
+  resource_type = "GROUP"
+  pattern_type = "LITERAL"
+  permission_type = "ALLOW"
+  resource_name = "enriched-event-projection-stage"
+  principal = rhoas_service_account.svc-account-stage.id
+  depends_on = [
+    rhoas_service_account.svc-account-stage,
+    rhoas_topic.events-stream-stage,
+  ]
+}
+
 output "bootstrap_server_stage" {
   value = rhoas_kafka.ai-events-stream-stage.bootstrap_server_host
 }
