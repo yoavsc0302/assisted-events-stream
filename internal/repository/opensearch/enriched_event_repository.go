@@ -51,14 +51,16 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 
 	response, err := req.Do(ctx, r.opensearch)
 
-	buf := new(strings.Builder)
-	io.Copy(buf, response.Body)
-	responseBody := buf.String()
+	if response != nil && response.Body != nil {
+		buf := new(strings.Builder)
+		io.Copy(buf, response.Body)
+		responseBody := buf.String()
 
-	r.logger.WithError(err).WithFields(logrus.Fields{
-		"response": response,
-		"body":     responseBody,
-	}).WithError(err).Debug("Response obtained")
+		r.logger.WithError(err).WithFields(logrus.Fields{
+			"response": response,
+			"body":     responseBody,
+		}).WithError(err).Debug("Response obtained")
+	}
 	return err
 }
 
