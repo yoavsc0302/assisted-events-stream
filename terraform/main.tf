@@ -26,7 +26,15 @@ resource "rhoas_topic" "events-stream-integration" {
   name       = "events-stream-integration"
   partitions = 6
   kafka_id   = rhoas_kafka.ai-events-stream-stage.id
+  depends_on = [
+    rhoas_kafka.ai-events-stream-stage
+  ]
+}
 
+resource "rhoas_topic" "events-stream-stage" {
+  name       = "events-stream-stage"
+  partitions = 6
+  kafka_id   = rhoas_kafka.ai-events-stream-stage.id
   depends_on = [
     rhoas_kafka.ai-events-stream-stage
   ]
