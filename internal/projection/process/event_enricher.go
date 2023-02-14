@@ -93,8 +93,10 @@ func GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, ho
 		return enrichedEvent, err
 	}
 	err = json.Unmarshal(eventBytes, enrichedEvent)
-
-	cluster["hosts"] = getHostsWithEmbeddedInfraEnv(hosts, infraEnvs)
+	cluster["hosts"] = nil
+	if len(hosts) > 0 {
+		cluster["hosts"] = getHostsWithEmbeddedInfraEnv(hosts, infraEnvs)
+	}
 
 	enrichedEvent.ID = uuid.NewSHA1(namespace, []byte(enrichedEvent.Message+enrichedEvent.EventTime)).String()
 
