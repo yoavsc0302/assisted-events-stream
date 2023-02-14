@@ -87,20 +87,16 @@ func GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, ho
 	if err != nil {
 		return nil, fmt.Errorf("Error getting uuid namespace, most likely seed is not 16 characters")
 	}
-
-	message, _ := GetValueFromPayload("message", event.Payload)
-	event_time, _ := GetValueFromPayload("event_time", event.Payload)
+	enrichedEvent := &types.EnrichedEvent{}
+	eventBytes, err := json.Marshal(event.Payload)
+	if err != nil {
+		return enrichedEvent, err
+	}
+	err = json.Unmarshal(eventBytes, enrichedEvent)
 
 	cluster["hosts"] = getHostsWithEmbeddedInfraEnv(hosts, infraEnvs)
 
-	enrichedEvent := &types.EnrichedEvent{}
-	enrichedEvent.ID = uuid.NewSHA1(namespace, []byte(message+event_time)).String()
-	enrichedEvent.Message = message
-	enrichedEvent.Category, _ = GetValueFromPayload("category", event.Payload)
-	enrichedEvent.EventTime = event_time
-	enrichedEvent.Name, _ = GetValueFromPayload("name", event.Payload)
-	enrichedEvent.RequestID, _ = GetValueFromPayload("request_id", event.Payload)
-	enrichedEvent.Severity, _ = GetValueFromPayload("severity", event.Payload)
+	enrichedEvent.ID = uuid.NewSHA1(namespace, []byte(enrichedEvent.Message+enrichedEvent.EventTime)).String()
 
 	if versions, ok := event.Metadata["versions"]; ok {
 		if v, ok := versions.(map[string]interface{}); ok {
@@ -109,7 +105,7 @@ func GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, ho
 	}
 	enrichedEvent.Cluster = cluster
 	enrichedEvent.InfraEnvs = infraEnvs
-	return enrichedEvent, nil
+	return enrichedEvent, err
 }
 
 func getHostsWithEmbeddedInfraEnv(hosts []map[string]interface{}, infraEnvs []map[string]interface{}) []map[string]interface{} {
