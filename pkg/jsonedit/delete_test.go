@@ -56,4 +56,24 @@ var _ = Describe("Delete json field", func() {
 			}
 		})
 	})
+
+	When("Delete an empty list field", func() {
+		It("should return empty list", func() {
+			input := []byte(`{"foobar":"myvalue"}`)
+			paths := []string{
+				"foo.bar[*].age",
+				"foo.bar[*].qux.fuzz",
+			}
+			output, err := Delete(input, paths)
+			Expect(err).NotTo(HaveOccurred())
+
+			var out map[string]interface{}
+			err = json.Unmarshal(output, &out)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, ok := out["foo"]
+			Expect(ok).To(BeFalse())
+		})
+	})
+
 })

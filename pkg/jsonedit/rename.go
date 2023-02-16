@@ -30,6 +30,9 @@ func Rename(jsonBytes []byte, paths map[string]string) ([]byte, error) {
 				continue
 			}
 			value := gjson.Get(string(jsonBytes), srcParent)
+			if !value.Exists() {
+				continue
+			}
 			raw := value.String()
 
 			var unpacked interface{}

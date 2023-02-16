@@ -30,7 +30,6 @@
               "properties": {}
             },
             "hosts": {
-              "ignore_malformed": true,
               "dynamic": true,
               "properties": {}
             }

@@ -65,4 +65,25 @@ var _ = Describe("Transform json field", func() {
 			}
 		})
 	})
+	When("Transform an empty list field", func() {
+		It("should return empty list", func() {
+			input := []byte(`{"foobar":"myvalue"}`)
+			paths := []string{
+				"foo.bar[*].age",
+				"foo.bar[*].qux.fuzz",
+			}
+			transformFn := func(unpacked interface{}) (interface{}, error) {
+				return unpacked, nil
+			}
+			output, err := Transform(input, paths, transformFn)
+			Expect(err).NotTo(HaveOccurred())
+
+			var out map[string]interface{}
+			err = json.Unmarshal(output, &out)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, ok := out["foo"]
+			Expect(ok).To(BeFalse())
+		})
+	})
 })

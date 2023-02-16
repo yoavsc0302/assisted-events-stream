@@ -21,17 +21,19 @@ func Transform(jsonBytes []byte, paths []string, transformFn func(unpacked inter
 		if !value.Exists() {
 			continue
 		}
-		raw := value.String()
+		res := value.Value()
+		var item interface{}
+		if res != nil {
+			// unpack raw value
+			var unpacked interface{}
+			err = json.Unmarshal([]byte(value.String()), &unpacked)
+			if err != nil {
+				// when it can't be unmarshaled, it might be scalar?
+				unpacked = value.String()
+			}
 
-		// unpack raw value
-		var unpacked interface{}
-		err = json.Unmarshal([]byte(raw), &unpacked)
-		if err != nil {
-			// when it can't be codified, it might be scalar
-			unpacked = raw
+			item, err = transformFn(unpacked)
 		}
-
-		item, err := transformFn(unpacked)
 
 		if err != nil {
 			// handle error

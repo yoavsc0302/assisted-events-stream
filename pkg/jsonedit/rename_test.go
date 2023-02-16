@@ -125,4 +125,22 @@ var _ = Describe("Rename json field", func() {
 		})
 	})
 
+	When("Rename an empty list field", func() {
+		It("should return empty list", func() {
+			input := []byte(`{"foobar":"myvalue"}`)
+			paths := map[string]string{
+				"foo.bar[*].age":      "foo.bar[*].oldness",
+				"foo.bar[*].qux.fuzz": "foo.bar[*].qux.fuz",
+			}
+			output, err := Rename(input, paths)
+			Expect(err).NotTo(HaveOccurred())
+
+			var out map[string]interface{}
+			err = json.Unmarshal(output, &out)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, ok := out["foo"]
+			Expect(ok).To(BeFalse())
+		})
+	})
 })

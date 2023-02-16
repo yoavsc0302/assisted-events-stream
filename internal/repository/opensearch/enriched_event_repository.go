@@ -47,6 +47,7 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 	}
 	r.logger.WithFields(logrus.Fields{
 		"request": req,
+		"payload": string(jsonEvent),
 	}).Debug("Trying to store event")
 
 	response, err := req.Do(ctx, r.opensearch)
