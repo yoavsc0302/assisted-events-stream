@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	types "github.com/openshift-assisted/assisted-events-streams/internal/types"
+	kafka "github.com/segmentio/kafka-go"
 )
 
 // MockEnrichedEventRepositoryInterface is a mock of EnrichedEventRepositoryInterface interface.
@@ -35,16 +36,28 @@ func (m *MockEnrichedEventRepositoryInterface) EXPECT() *MockEnrichedEventReposi
 	return m.recorder
 }
 
-// Store mocks base method.
-func (m *MockEnrichedEventRepositoryInterface) Store(ctx context.Context, enrichedEvent *types.EnrichedEvent) error {
+// Close mocks base method.
+func (m *MockEnrichedEventRepositoryInterface) Close(ctx context.Context) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Store", ctx, enrichedEvent)
+	m.ctrl.Call(m, "Close", ctx)
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockEnrichedEventRepositoryInterfaceMockRecorder) Close(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEnrichedEventRepositoryInterface)(nil).Close), ctx)
+}
+
+// Store mocks base method.
+func (m *MockEnrichedEventRepositoryInterface) Store(ctx context.Context, enrichedEvent *types.EnrichedEvent, msg *kafka.Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Store", ctx, enrichedEvent, msg)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Store indicates an expected call of Store.
-func (mr *MockEnrichedEventRepositoryInterfaceMockRecorder) Store(ctx, enrichedEvent interface{}) *gomock.Call {
+func (mr *MockEnrichedEventRepositoryInterfaceMockRecorder) Store(ctx, enrichedEvent, msg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockEnrichedEventRepositoryInterface)(nil).Store), ctx, enrichedEvent)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockEnrichedEventRepositoryInterface)(nil).Store), ctx, enrichedEvent, msg)
 }

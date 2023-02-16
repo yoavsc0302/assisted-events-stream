@@ -59,7 +59,7 @@ var _ = Describe("Process message", func() {
 			mockSnapshotRepo.EXPECT().GetInfraEnvs(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(1).Return(mockInfraEnvs, nil)
 			mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), mockCluster, mockHosts, mockInfraEnvs).Times(1).Return(mockEnrichedEvent)
 
-			mockEnrichedEventRepo.EXPECT().Store(ctx, mockEnrichedEvent).Times(1).Return(nil)
+			mockEnrichedEventRepo.EXPECT().Store(ctx, mockEnrichedEvent, msg).Times(1).Return(nil)
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
 		})
@@ -75,7 +75,7 @@ var _ = Describe("Process message", func() {
 
 			mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any()).Times(0)
+			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any(), msg).Times(0)
 
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
@@ -92,7 +92,7 @@ var _ = Describe("Process message", func() {
 
 			mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any()).Times(0)
+			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any(), msg).Times(0)
 
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
@@ -109,7 +109,7 @@ var _ = Describe("Process message", func() {
 
 			mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any()).Times(0).Return(nil)
+			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any(), msg).Times(0).Return(nil)
 
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())

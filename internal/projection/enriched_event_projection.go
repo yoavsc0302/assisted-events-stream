@@ -43,31 +43,33 @@ func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.
 	}
 }
 
+func (p *EnrichedEventsProjection) Close(ctx context.Context) {
+	p.enrichedEventRepository.Close(ctx)
+}
+
 func (p *EnrichedEventsProjection) ProcessMessage(ctx context.Context, msg *kafka.Message) error {
 
 	event, err := getEventFromMessage(msg)
 	if err != nil {
 		return err
 	}
-	return p.ProcessEvent(ctx, event)
+	return p.ProcessEvent(ctx, event, msg)
 }
 
-func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *types.Event) error {
-
-	var processFn func(ctx context.Context, event *types.Event) error
+func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *types.Event, msg *kafka.Message) error {
+	var err error
 	switch event.Name {
 	case ClusterEvent:
-		processFn = p.ProcessClusterEvent
+		err = p.ProcessClusterEvent(ctx, event, msg)
 	case ClusterState:
-		processFn = p.ProcessClusterState
+		err = p.ProcessClusterState(ctx, event)
 	case HostState:
-		processFn = p.ProcessHostState
+		err = p.ProcessHostState(ctx, event)
 	case InfraEnvState:
-		processFn = p.ProcessInfraEnvState
+		err = p.ProcessInfraEnvState(ctx, event)
 	default:
 		return fmt.Errorf("Unknown event name: %s (%s)", event.Name, event.Payload)
 	}
-	err := processFn(ctx, event)
 	if _, ok := err.(*process.MalformedEventError); ok {
 		p.logger.WithError(err).Warn("malformed event discarded")
 		return nil
@@ -75,7 +77,7 @@ func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *type
 	return err
 }
 
-func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, event *types.Event) error {
+func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, event *types.Event, msg *kafka.Message) error {
 	clusterID, err := process.GetValueFromPayload("cluster_id", event.Payload)
 	if err != nil {
 		return err
@@ -101,14 +103,11 @@ func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, even
 	}
 
 	enrichedEvent := p.eventEnricher.GetEnrichedEvent(event, cluster, hosts, infraEnvs)
-	err = p.enrichedEventRepository.Store(ctx, enrichedEvent)
+	err = p.enrichedEventRepository.Store(ctx, enrichedEvent, msg)
 	if err != nil {
-		p.logger.WithError(err).Warn("Something went wrong while trying to store the event")
+		p.logger.WithError(err).Warn("something went wrong while trying to store the event")
 		return err
 	}
-	p.logger.WithFields(logrus.Fields{
-		"event_id": enrichedEvent.ID,
-	}).Info("Event stored")
 	return nil
 }
 

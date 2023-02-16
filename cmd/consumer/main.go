@@ -15,8 +15,11 @@ import (
 	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
 	"github.com/openshift-assisted/assisted-events-streams/internal/utils"
 	"github.com/openshift-assisted/assisted-events-streams/pkg/stream"
+	kafka "github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 )
+
+const AckChannelBufferSize = 1000
 
 func NewOpensearchClientFromEnv(logger *logrus.Logger) *opensearch.Client {
 	addresses := []string{
@@ -68,10 +71,10 @@ func NewRedisClientFromEnv(ctx context.Context, logger *logrus.Logger) *redis.Cl
 	return client
 }
 
-func NewEnrichedEventRepositoryFromEnv(logger *logrus.Logger) *opensearch_repo.EnrichedEventRepository {
+func NewEnrichedEventRepositoryFromEnv(logger *logrus.Logger, ackChannel chan kafka.Message) *opensearch_repo.EnrichedEventRepository {
 	indexPrefix := os.Getenv("OPENSEARCH_INDEX_PREFIX")
 	opensearch := NewOpensearchClientFromEnv(logger)
-	return opensearch_repo.NewEnrichedEventRepository(logger, opensearch, indexPrefix)
+	return opensearch_repo.NewEnrichedEventRepository(logger, opensearch, indexPrefix, ackChannel)
 }
 
 func NewSnapshotRepositoryFromEnv(ctx context.Context, logger *logrus.Logger) *redis_repo.SnapshotRepository {
@@ -79,8 +82,8 @@ func NewSnapshotRepositoryFromEnv(ctx context.Context, logger *logrus.Logger) *r
 	return redis_repo.NewSnapshotRepository(logger, redis)
 }
 
-func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger) *projection.EnrichedEventsProjection {
-	enrichedEventRepository := NewEnrichedEventRepositoryFromEnv(logger)
+func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger, ackChannel chan kafka.Message) *projection.EnrichedEventsProjection {
+	enrichedEventRepository := NewEnrichedEventRepositoryFromEnv(logger, ackChannel)
 	snapshotRepository := NewSnapshotRepositoryFromEnv(ctx, logger)
 	return projection.NewEnrichedEventsProjection(
 		logger,
@@ -92,12 +95,13 @@ func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logg
 func main() {
 	ctx := context.Background()
 	log := utils.NewLogger()
-	reader, err := stream.NewKafkaReader(log)
+	ackChannel := make(chan kafka.Message, AckChannelBufferSize)
+	reader, err := stream.NewKafkaReader(log, ackChannel)
 	if err != nil {
 		log.WithError(err).Fatal("Could not connect to kafka")
 	}
 
-	projection := NewEnrichedEventsProjectionFromEnv(ctx, log)
+	projection := NewEnrichedEventsProjectionFromEnv(ctx, log, ackChannel)
 
 	err = reader.Consume(ctx, projection.ProcessMessage)
 	if err != nil {

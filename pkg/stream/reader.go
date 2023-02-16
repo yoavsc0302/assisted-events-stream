@@ -25,6 +25,7 @@ type KafkaReader struct {
 	logger      *logrus.Logger
 	kafkaReader *kafka.Reader
 	config      *KafkaConfig
+	ackChannel  chan kafka.Message
 }
 
 type KafkaConfig struct {
@@ -35,7 +36,7 @@ type KafkaConfig struct {
 	GroupID         string `envconfig:"KAFKA_GROUP_ID" required:"true"`
 }
 
-func NewKafkaReader(logger *logrus.Logger) (*KafkaReader, error) {
+func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*KafkaReader, error) {
 	envConfig := &KafkaConfig{}
 	err := envconfig.Process("", envConfig)
 	if err != nil {
@@ -62,12 +63,12 @@ func NewKafkaReader(logger *logrus.Logger) (*KafkaReader, error) {
 		}
 		config.Dialer = dialer
 	}
-
 	kafkaReader := kafka.NewReader(config)
 	return &KafkaReader{
 		logger:      logger,
 		kafkaReader: kafkaReader,
 		config:      envConfig,
+		ackChannel:  ackChannel,
 	}, nil
 }
 
@@ -78,24 +79,37 @@ func (r *KafkaReader) Consume(ctx context.Context, processMessageFn func(ctx con
 		"group_id":         r.config.GroupID,
 	}).Printf("Connecting to kafka")
 	defer r.kafkaReader.Close()
-
+	go r.listenForCommit(ctx)
 	for {
 		msg, err := r.kafkaReader.FetchMessage(ctx)
+		fields := logrus.Fields{
+			"offset": msg.Offset,
+			"key":    msg.Key,
+		}
 		if err != nil {
 			return err
 		}
-		r.logger.Debug("Processing message")
+		r.logger.WithFields(fields).Debug("processing message")
 		err = processMessageFn(ctx, &msg)
 		if err != nil {
-			r.logger.WithError(err).Error("Error processing message")
+			r.logger.WithError(err).WithFields(fields).Error("error processing message")
 			return err
 		}
-		r.logger.Debug("Message processed")
-		if err := r.kafkaReader.CommitMessages(ctx, msg); err != nil {
-			r.logger.WithError(err).Error("Error committing message")
-			return err
-		}
-		r.logger.Debug("Message committed")
+
+		r.logger.WithFields(fields).Debug("message processed")
 	}
 	return nil
+}
+
+func (r *KafkaReader) listenForCommit(ctx context.Context) {
+	for msg := range r.ackChannel {
+		fields := logrus.Fields{
+			"offset": msg.Offset,
+			"key":    msg.Key,
+		}
+		if err := r.kafkaReader.CommitMessages(ctx, msg); err != nil {
+			r.logger.WithError(err).WithFields(fields).Error("error committing message")
+		}
+		r.logger.WithFields(fields).Debug("message committed")
+	}
 }

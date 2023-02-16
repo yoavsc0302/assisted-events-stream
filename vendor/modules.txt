@@ -80,6 +80,7 @@ github.com/opensearch-project/opensearch-go
 github.com/opensearch-project/opensearch-go/internal/version
 github.com/opensearch-project/opensearch-go/opensearchapi
 github.com/opensearch-project/opensearch-go/opensearchtransport
+github.com/opensearch-project/opensearch-go/opensearchutil
 github.com/opensearch-project/opensearch-go/signer
 # github.com/pierrec/lz4/v4 v4.1.15
 ## explicit; go 1.14
