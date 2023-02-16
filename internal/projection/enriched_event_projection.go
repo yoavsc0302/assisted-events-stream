@@ -58,6 +58,9 @@ func (p *EnrichedEventsProjection) ProcessMessage(ctx context.Context, msg *kafk
 
 func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *types.Event, msg *kafka.Message) error {
 	var err error
+	p.logger.WithFields(logrus.Fields{
+		"name": event.Name,
+	}).Debug("processing event")
 	switch event.Name {
 	case ClusterEvent:
 		err = p.ProcessClusterEvent(ctx, event, msg)

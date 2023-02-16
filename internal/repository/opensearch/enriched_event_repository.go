@@ -36,7 +36,7 @@ type EnrichedEventRepository struct {
 }
 
 func NewEnrichedEventRepository(logger *logrus.Logger, opensearch *opensearch.Client, indexPrefix string, ackChannel chan kafka.Message) *EnrichedEventRepository {
-	bulkIndexer, _ := opensearchutil.NewBulkIndexer(opensearchutil.BulkIndexerConfig{
+	bulkIndexer, err := opensearchutil.NewBulkIndexer(opensearchutil.BulkIndexerConfig{
 		Client:        opensearch,
 		FlushBytes:    MaxBytes,
 		FlushInterval: FlushInterval,
@@ -45,7 +45,17 @@ func NewEnrichedEventRepository(logger *logrus.Logger, opensearch *opensearch.Cl
 		OnError: func(ctx context.Context, err error) {
 			logger.Println(fmt.Errorf("bulk item indexer failed %w", err))
 		},
+		OnFlushStart: func(ctx context.Context) context.Context {
+			logger.Info("Starting to flush...")
+			return ctx
+		},
+		OnFlushEnd: func(ctx context.Context) {
+			logger.Info("Flushed.")
+		},
 	})
+	if err != nil {
+		logger.WithError(err).Warning("error initializing bulk indexer")
+	}
 
 	return &EnrichedEventRepository{
 		indexPrefix: indexPrefix,
@@ -61,6 +71,10 @@ func (r *EnrichedEventRepository) Close(ctx context.Context) {
 }
 
 func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *types.EnrichedEvent, msg *kafka.Message) error {
+	r.logger.WithFields(logrus.Fields{
+		"id": enrichedEvent.ID,
+	}).Debug("adding event to bulk indexer")
+
 	jsonEvent, err := json.Marshal(enrichedEvent)
 	if err != nil {
 		return err
@@ -85,6 +99,12 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 		},
 	}
 	r.bulk.Add(ctx, item)
+
+	r.logger.WithFields(logrus.Fields{
+		"id":    enrichedEvent.ID,
+		"stats": r.bulk.Stats(),
+	}).Debug("added event to bulk indexer")
+
 	return nil
 }
 
