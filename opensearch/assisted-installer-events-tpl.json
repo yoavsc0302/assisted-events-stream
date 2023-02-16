@@ -1,56 +1,54 @@
 {
   "index_patterns":["assisted-installer-events-*"],
-  "template": {
-    "settings": {
-      "number_of_shards": 1,
-      "number_of_replicas": 2
-    },
-    "mappings": {
-      "dynamic_templates":[
-        {
-          "default_keyword": {
-            "match_mapping_type": "string",
-            "mapping": {
-              "type": "keyword",
-              "ignore_above": 2048
-            }
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "dynamic_templates":[
+      {
+        "default_keyword": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 2048
           }
         }
-      ],
-      "properties": {
-        "cluster": {
-          "dynamic": true,
-          "properties": {
-            "connectivity_majority_groups": {
-              "dynamic": true,
-              "properties": {}
-            },
-            "feature_usage": {
-              "dynamic": true,
-              "properties": {}
-            },
-            "hosts": {
-              "dynamic": true,
-              "properties": {}
-            }
+      }
+    ],
+    "properties": {
+      "cluster": {
+        "dynamic": true,
+        "properties": {
+          "connectivity_majority_groups": {
+            "dynamic": true,
+            "properties": {}
+          },
+          "feature_usage": {
+            "dynamic": true,
+            "properties": {}
+          },
+          "hosts": {
+            "dynamic": true,
+            "properties": {}
           }
-        },
-        "event_time": {
-          "type": "date"
-        },
-        "message": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 2048
-            }
-          }
-        },
-        "versions": {
-          "dynamic": true,
-          "properties": {}
         }
+      },
+      "event_time": {
+        "type": "date"
+      },
+      "message": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 2048
+          }
+        }
+      },
+      "versions": {
+        "dynamic": true,
+        "properties": {}
       }
     }
   }
