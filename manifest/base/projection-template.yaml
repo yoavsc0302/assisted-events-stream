@@ -37,6 +37,8 @@ parameters:
   value: assisted-installer-events-v1-
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: assisted-installer-event-stream
+- name: LOG_LEVEL
+  value: info
 objects:
 - apiVersion: apps/v1
   kind: Deployment
@@ -68,6 +70,8 @@ objects:
           env:            
           - name: KAFKA_EVENT_STREAM_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
+          - name: LOG_LEVEL
+            value: ${LOG_LEVEL}
           - name: KAFKA_GROUP_ID
             value: ${KAFKA_GROUP_ID}
           - name: KAFKA_BOOTSTRAP_SERVER
