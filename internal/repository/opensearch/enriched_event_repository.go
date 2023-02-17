@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	NumWorkers    = 1
 	BulkTimeout   = time.Second * 20
 	FlushInterval = time.Second * 30
 	MaxBytes      = 10e6 // Flush records after this size
@@ -37,6 +38,7 @@ type EnrichedEventRepository struct {
 
 func NewEnrichedEventRepository(logger *logrus.Logger, opensearch *opensearch.Client, indexPrefix string, ackChannel chan kafka.Message) *EnrichedEventRepository {
 	bulkIndexer, err := opensearchutil.NewBulkIndexer(opensearchutil.BulkIndexerConfig{
+		NumWorkers:    NumWorkers,
 		Client:        opensearch,
 		FlushBytes:    MaxBytes,
 		FlushInterval: FlushInterval,
