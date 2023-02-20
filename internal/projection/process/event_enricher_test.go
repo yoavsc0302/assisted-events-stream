@@ -31,6 +31,15 @@ var _ = Describe("Process message", func() {
 			enrichedEvent := enricher.GetEnrichedEvent(event, cluster, hosts, infraEnvs)
 
 			Expect(enrichedEvent.Message).Should(Equal(message))
+			Expect(enrichedEvent.Event).NotTo(BeNil())
+			foobar, ok := enrichedEvent.Event.Properties["foobar"]
+			Expect(ok).To(BeTrue())
+			Expect(foobar).To(Equal("barfoo"))
+
+			fooqux, ok := enrichedEvent.Event.Properties["fooqux"]
+			Expect(ok).To(BeTrue())
+			Expect(fooqux).Should(Equal(float64(1)))
+
 			featureUsage, ok := enrichedEvent.Cluster["feature_usage"]
 			Expect(ok).To(BeTrue())
 
@@ -240,6 +249,7 @@ func getEvent(name, message string) *types.Event {
 		"name":       name,
 		"message":    message,
 		"event_time": "2023-01-27T03:40:08.998Z",
+		"props":      `{"foobar":"barfoo", "fooqux":1}`,
 	}
 	return &types.Event{
 		Name:     "Foobar",

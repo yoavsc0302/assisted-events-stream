@@ -87,13 +87,14 @@ func GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, ho
 	if err != nil {
 		return nil, fmt.Errorf("Error getting uuid namespace, most likely seed is not 16 characters")
 	}
+
 	enrichedEvent := &types.EnrichedEvent{}
+	enrichedEvent.Event.Properties = getProps(event.Payload)
 	eventBytes, err := json.Marshal(event.Payload)
 	if err != nil {
 		return enrichedEvent, err
 	}
 	err = json.Unmarshal(eventBytes, enrichedEvent)
-
 	cluster["hosts"] = getHostsWithEmbeddedInfraEnv(hosts, infraEnvs)
 
 	enrichedEvent.ID = uuid.NewSHA1(namespace, []byte(enrichedEvent.Message+enrichedEvent.EventTime)).String()
@@ -128,4 +129,18 @@ func (e *EventEnricher) getEnrichedEventFromJson(eventJson []byte) *types.Enrich
 		e.logger.WithError(err).Debug("error unmarshaling json to enriched event")
 	}
 	return &outEvent
+}
+
+func getProps(eventPayload interface{}) map[string]interface{} {
+	defaultProps := map[string]interface{}{}
+	if payload, ok := eventPayload.(map[string]interface{}); ok {
+		if rawProps, ok := payload["props"]; ok {
+			if p, ok := rawProps.(string); ok {
+				structuredProps := map[string]interface{}{}
+				json.Unmarshal([]byte(p), &structuredProps)
+				return structuredProps
+			}
+		}
+	}
+	return defaultProps
 }

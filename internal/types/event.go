@@ -22,11 +22,15 @@ type EnrichedEvent struct {
 	Name         string                   `json:"name"`
 	RequestID    string                   `json:"request_id"`
 	Severity     string                   `json:"severity"`
+	Event        EmbeddedEvent            `json:"event,omitempty"`
 	Cluster      map[string]interface{}   `json:"cluster"`
 	InfraEnvs    []map[string]interface{} `json:"infra_envs,omitempty"`
 	Versions     map[string]interface{}   `json:"versions"`
 }
 
+type EmbeddedEvent struct {
+	Properties map[string]interface{} `json:"props,omitempty"`
+}
 type ClusterState State
 
 type HostState State
