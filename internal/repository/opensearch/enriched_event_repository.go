@@ -16,8 +16,8 @@ import (
 
 const (
 	NumWorkers    = 1
-	BulkTimeout   = time.Second * 20
-	FlushInterval = time.Second * 30
+	BulkTimeout   = time.Second * 90
+	FlushInterval = time.Second * 120
 	MaxBytes      = 10e6 // Flush records after this size
 )
 
