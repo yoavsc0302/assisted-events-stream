@@ -31,7 +31,7 @@ func NewOpensearchClientFromEnv(logger *logrus.Logger) *opensearch.Client {
 		Password:  os.Getenv("OPENSEARCH_PASSWORD"),
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost:   10,
-			ResponseHeaderTimeout: time.Second,
+			ResponseHeaderTimeout: time.Second * 90,
 			DialContext:           (&net.Dialer{Timeout: time.Second}).DialContext,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true, // When local env
