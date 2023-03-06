@@ -22,6 +22,7 @@ type EventStreamReader interface {
 }
 
 type KafkaReader struct {
+	quitChannel chan struct{}
 	logger      *logrus.Logger
 	kafkaReader *kafka.Reader
 	config      *KafkaConfig
@@ -65,11 +66,17 @@ func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*Kafk
 	}
 	kafkaReader := kafka.NewReader(config)
 	return &KafkaReader{
+		quitChannel: make(chan struct{}),
 		logger:      logger,
 		kafkaReader: kafkaReader,
 		config:      envConfig,
 		ackChannel:  ackChannel,
 	}, nil
+}
+
+func (r *KafkaReader) Close(ctx context.Context) {
+	close(r.quitChannel)
+	r.kafkaReader.Close()
 }
 
 func (r *KafkaReader) Consume(ctx context.Context, processMessageFn func(ctx context.Context, msg *kafka.Message) error) error {
@@ -78,25 +85,31 @@ func (r *KafkaReader) Consume(ctx context.Context, processMessageFn func(ctx con
 		"topic":            r.config.Topic,
 		"group_id":         r.config.GroupID,
 	}).Printf("Connecting to kafka")
-	defer r.kafkaReader.Close()
+
 	go r.listenForCommit(ctx)
 	for {
-		msg, err := r.kafkaReader.FetchMessage(ctx)
-		fields := logrus.Fields{
-			"offset": msg.Offset,
-			"key":    msg.Key,
-		}
-		if err != nil {
-			return err
-		}
-		r.logger.WithFields(fields).Debug("processing message")
-		err = processMessageFn(ctx, &msg)
-		if err != nil {
-			r.logger.WithError(err).WithFields(fields).Error("error processing message")
-			return err
-		}
+		select {
+		case <-r.quitChannel:
+			r.logger.Info("stop consuming")
+			return nil
+		default:
+			msg, err := r.kafkaReader.FetchMessage(ctx)
+			fields := logrus.Fields{
+				"offset": msg.Offset,
+				"key":    msg.Key,
+			}
+			if err != nil {
+				return err
+			}
+			r.logger.WithFields(fields).Debug("processing message")
+			err = processMessageFn(ctx, &msg)
+			if err != nil {
+				r.logger.WithError(err).WithFields(fields).Error("error processing message")
+				return err
+			}
 
-		r.logger.WithFields(fields).Debug("message processed")
+			r.logger.WithFields(fields).Debug("message processed")
+		}
 	}
 	return nil
 }
