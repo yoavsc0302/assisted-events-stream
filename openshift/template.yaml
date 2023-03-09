@@ -503,9 +503,9 @@ parameters:
 - name: OPENSEARCH_CONFIG_INDEX
   value: config
 - name: OPENSEARCH_BULK_WORKERS
-  value: 1
+  value: "1"
 - name: OPENSEARCH_FLUSH_BYTES
-  value: 10000000
+  value: "10e6"
 - name: OPENSEARCH_BULK_FLUSH_INTERVAL
   value: 120s
 - name: OPENSEARCH_RESPONSE_TIMEOUT
