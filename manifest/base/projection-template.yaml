@@ -39,12 +39,14 @@ parameters:
   value: "config"
 - name: OPENSEARCH_BULK_WORKERS
   value: "1"
-- name: OPENSEARCH_FLUSH_BYTES
-  value: 10e6
+- name: OPENSEARCH_BULK_FLUSH_BYTES
+  value: "10000000"
 - name: OPENSEARCH_BULK_FLUSH_INTERVAL
   value: "120s"
 - name: OPENSEARCH_RESPONSE_TIMEOUT
   value: "90s"
+- name: OPENSEARCH_SSL_INSECURE_SKIP_VERIFY
+  value: "false"
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: assisted-installer-event-stream
 - name: LOG_LEVEL
@@ -82,12 +84,14 @@ objects:
             value: ${OPENSEARCH_CONFIG_INDEX}
           - name: OPENSEARCH_BULK_WORKERS
             value: ${OPENSEARCH_BULK_WORKERS}
-          - name: OPENSEARCH_FLUSH_BYTES
-            value: ${OPENSEARCH_FLUSH_BYTES}
+          - name: OPENSEARCH_BULK_FLUSH_BYTES
+            value: ${OPENSEARCH_BULK_FLUSH_BYTES}
           - name: OPENSEARCH_BULK_FLUSH_INTERVAL
             value: ${OPENSEARCH_BULK_FLUSH_INTERVAL}
           - name: OPENSEARCH_RESPONSE_TIMEOUT
             value: ${OPENSEARCH_RESPONSE_TIMEOUT}
+          - name: OPENSEARCH_SSL_INSECURE_SKIP_VERIFY
+            value: ${OPENSEARCH_SSL_INSECURE_SKIP_VERIFY}
           - name: KAFKA_EVENT_STREAM_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
           - name: LOG_LEVEL

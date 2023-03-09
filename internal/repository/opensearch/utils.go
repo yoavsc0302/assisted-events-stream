@@ -16,27 +16,27 @@ import (
 
 type OpensearchEnvConfig struct {
 	NumWorkers            int           `envconfig:"OPENSEARCH_BULK_WORKERS" default:"1"`
-	FlushBytes            int           `envconfig:"OPENSEARCH_BULK_FLUSH_BYTES" default:"10e6"`
+	FlushBytes            int           `envconfig:"OPENSEARCH_BULK_FLUSH_BYTES" default:"10000000"`
 	FlushInterval         time.Duration `envconfig:"OPENSEARCH_BULK_FLUSH_INTERVAL" default:"120s"`
 	BulkTimeout           time.Duration `envconfig:"OPENSEARCH_BULK_TIMEOUT" default:"90s"`
-	Username              string        `envconfig:"OPENSEARCH_USERNAME required:"true"`
-	Password              string        `envconfig:"OPENSEARCH_PASSWORD required:"true"`
-	Address               string        `envconfig:"OPENSEARCH_ADDRESS required:"true"`
-	ResponseTimeout       time.Duration `envconfig:"OPENSEARCH_RESPONSE_TIMEOUT default:"90s"`
-	DialTimeout           time.Duration `envconfig:"OPENSEARCH_DIAL_TIMEOUT default:"1s"`
-	SSLInsecureSkipVerify bool          `envconfig:"OPENSEARCH_SSL_INSECURE_SKIP_VERIFY default:"false"`
+	Username              string        `envconfig:"OPENSEARCH_USERNAME" required:"true"`
+	Password              string        `envconfig:"OPENSEARCH_PASSWORD" required:"true"`
+	Address               string        `envconfig:"OPENSEARCH_ADDRESS" required:"true"`
+	ResponseTimeout       time.Duration `envconfig:"OPENSEARCH_RESPONSE_TIMEOUT" default:"90s"`
+	DialTimeout           time.Duration `envconfig:"OPENSEARCH_DIAL_TIMEOUT" default:"1s"`
+	SSLInsecureSkipVerify bool          `envconfig:"OPENSEARCH_SSL_INSECURE_SKIP_VERIFY" default:"false"`
 	IndexPrefix           string        `envconfig:"OPENSEARCH_INDEX_PREFIX required:"true"`
 	ConfigIndex           string        `envconfig:"OPENSEARCH_CONFIG_INDEX required:"true"`
 	DocId                 string        `envconfig:"OPENSEARCH_CONFIG_DOC_ID default:"projection_config"`
 }
 
 func getConfigFromEnv(logger *logrus.Logger) *OpensearchEnvConfig {
-	envConfig := &OpensearchEnvConfig{}
-	err := envconfig.Process("", envConfig)
+	envConfig := OpensearchEnvConfig{}
+	err := envconfig.Process("", &envConfig)
 	if err != nil {
 		logger.WithError(err).Error("error parsing opensearch env config")
 	}
-	return envConfig
+	return &envConfig
 }
 
 func NewOpensearchClientFromEnv(logger *logrus.Logger) *opensearch.Client {
