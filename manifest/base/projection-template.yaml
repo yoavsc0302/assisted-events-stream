@@ -36,15 +36,15 @@ parameters:
 - name: OPENSEARCH_INDEX_PREFIX
   value: assisted-installer-events-v1-
 - name: OPENSEARCH_CONFIG_INDEX
-  value: config
+  value: "config"
 - name: OPENSEARCH_BULK_WORKERS
-  value: 1
+  value: "1"
 - name: OPENSEARCH_FLUSH_BYTES
-  value: 10e6
+  value: "10e6"
 - name: OPENSEARCH_BULK_FLUSH_INTERVAL
-  value: 120s
+  value: "120s"
 - name: OPENSEARCH_RESPONSE_TIMEOUT
-  value: 90s
+  value: "90s"
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: assisted-installer-event-stream
 - name: LOG_LEVEL
