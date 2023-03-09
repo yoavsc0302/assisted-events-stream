@@ -13,3 +13,7 @@ type EnrichedEventRepositoryInterface interface {
 	Store(ctx context.Context, enrichedEvent *types.EnrichedEvent, msg *kafka.Message) error
 	Close(ctx context.Context)
 }
+
+type ProjectionConfigRepositoryInterface interface {
+	Get(ctx context.Context) types.ProjectionConfig
+}
