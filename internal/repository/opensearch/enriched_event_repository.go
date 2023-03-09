@@ -14,20 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	NumWorkers    = 1
-	BulkTimeout   = time.Second * 90
-	FlushInterval = time.Second * 120
-	MaxBytes      = 10e6 // Flush records after this size
-)
-
-//go:generate mockgen -source=enriched_event_repository.go -package=opensearch -destination=mock_enriched_event_repository.go
-
-type EnrichedEventRepositoryInterface interface {
-	Store(ctx context.Context, enrichedEvent *types.EnrichedEvent, msg *kafka.Message) error
-	Close(ctx context.Context)
-}
-
 type EnrichedEventRepository struct {
 	indexPrefix string
 	opensearch  *opensearch.Client
@@ -37,24 +23,7 @@ type EnrichedEventRepository struct {
 }
 
 func NewEnrichedEventRepository(logger *logrus.Logger, opensearch *opensearch.Client, indexPrefix string, ackChannel chan kafka.Message) *EnrichedEventRepository {
-	bulkIndexer, err := opensearchutil.NewBulkIndexer(opensearchutil.BulkIndexerConfig{
-		NumWorkers:    NumWorkers,
-		Client:        opensearch,
-		FlushBytes:    MaxBytes,
-		FlushInterval: FlushInterval,
-		Refresh:       "false",
-		Timeout:       BulkTimeout,
-		OnError: func(ctx context.Context, err error) {
-			logger.Println(fmt.Errorf("bulk item indexer failed %w", err))
-		},
-		OnFlushStart: func(ctx context.Context) context.Context {
-			logger.Info("Starting to flush...")
-			return ctx
-		},
-		OnFlushEnd: func(ctx context.Context) {
-			logger.Info("Flushed.")
-		},
-	})
+	bulkIndexer, err := NewBulkIndexerFromEnv(opensearch, logger)
 	if err != nil {
 		logger.WithError(err).Warning("error initializing bulk indexer")
 	}
