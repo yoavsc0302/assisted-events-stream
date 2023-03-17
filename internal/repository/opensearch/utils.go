@@ -25,9 +25,9 @@ type OpensearchEnvConfig struct {
 	ResponseTimeout       time.Duration `envconfig:"OPENSEARCH_RESPONSE_TIMEOUT" default:"90s"`
 	DialTimeout           time.Duration `envconfig:"OPENSEARCH_DIAL_TIMEOUT" default:"1s"`
 	SSLInsecureSkipVerify bool          `envconfig:"OPENSEARCH_SSL_INSECURE_SKIP_VERIFY" default:"false"`
-	IndexPrefix           string        `envconfig:"OPENSEARCH_INDEX_PREFIX required:"true"`
-	ConfigIndex           string        `envconfig:"OPENSEARCH_CONFIG_INDEX required:"true"`
-	DocId                 string        `envconfig:"OPENSEARCH_CONFIG_DOC_ID default:"projection_config"`
+	IndexPrefix           string        `envconfig:"OPENSEARCH_INDEX_PREFIX" required:"true"`
+	ConfigIndex           string        `envconfig:"OPENSEARCH_CONFIG_INDEX" required:"true"`
+	DocId                 string        `envconfig:"OPENSEARCH_CONFIG_DOC_ID" default:"projection_config"`
 }
 
 func getConfigFromEnv(logger *logrus.Logger) *OpensearchEnvConfig {
