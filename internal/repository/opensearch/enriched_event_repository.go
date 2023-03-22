@@ -63,10 +63,11 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 		OnFailure: func(ctx context.Context, item opensearchutil.BulkIndexerItem, resp opensearchutil.BulkIndexerResponseItem, err error) {
 			r.logger.WithError(err).WithFields(logrus.Fields{
 				"document_id": item.DocumentID,
+				"item":        item,
 				"action":      item.Action,
 				"index":       item.Index,
 				"response":    resp,
-			}).Debug("error bulk indexing document")
+			}).Error("error bulk indexing document")
 		},
 	}
 	r.bulk.Add(ctx, item)
