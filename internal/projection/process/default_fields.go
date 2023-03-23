@@ -16,9 +16,17 @@ func getDefaultFieldsToUnpack() []string {
 	}
 }
 
-func getDefaultFieldsMapToList() []string {
+func getDefaultFieldsMapToListDropKey() []string {
 	return []string{
 		"cluster.feature_usage",
+	}
+}
+
+func getDefaultFieldsMapToList() []string {
+	return []string{
+		"cluster.connectivity_majority_groups",
+		"cluster.hosts[*].disks_info",
+		"cluster.hosts[*].images_status",
 	}
 }
 

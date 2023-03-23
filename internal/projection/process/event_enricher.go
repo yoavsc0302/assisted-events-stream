@@ -11,20 +11,22 @@ import (
 )
 
 type EventEnricher struct {
-	logger            *logrus.Logger
-	fieldsToUnpack    []string
-	fieldsMapToList   []string
-	fieldsToDelete    []string
-	fieldsToAnonymize map[string]string
+	logger                 *logrus.Logger
+	fieldsToUnpack         []string
+	fieldsMapToList        []string
+	fieldsMapToListDropKey []string
+	fieldsToDelete         []string
+	fieldsToAnonymize      map[string]string
 }
 
 func NewEventEnricher(logger *logrus.Logger) *EventEnricher {
 	return &EventEnricher{
-		logger:            logger,
-		fieldsToUnpack:    getDefaultFieldsToUnpack(),
-		fieldsMapToList:   getDefaultFieldsMapToList(),
-		fieldsToDelete:    getDefaultFieldsToDelete(),
-		fieldsToAnonymize: getDefaultFieldsToAnonymize(),
+		logger:                 logger,
+		fieldsToUnpack:         getDefaultFieldsToUnpack(),
+		fieldsMapToList:        getDefaultFieldsMapToList(),
+		fieldsMapToListDropKey: getDefaultFieldsMapToListDropKey(),
+		fieldsToDelete:         getDefaultFieldsToDelete(),
+		fieldsToAnonymize:      getDefaultFieldsToAnonymize(),
 	}
 }
 
@@ -48,7 +50,11 @@ func (e *EventEnricher) getTransformedEvent(enrichedEvent *types.EnrichedEvent) 
 	if err != nil {
 		e.logger.WithError(err).Debug("error unpacking json")
 	}
-	transformedJson, err := mapToListJson(unpackedJson, e.fieldsMapToList)
+	transformedJson, err := mapToListJsonDropKey(unpackedJson, e.fieldsMapToListDropKey)
+	if err != nil {
+		e.logger.WithError(err).Debug("error transforming json")
+	}
+	transformedJson, err = mapToListJson(transformedJson, e.fieldsMapToList)
 	if err != nil {
 		e.logger.WithError(err).Debug("error transforming json")
 	}

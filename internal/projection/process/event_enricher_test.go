@@ -58,6 +58,66 @@ var _ = Describe("Process message", func() {
 			Expect(ids).To(ContainElements("HYPERTHREADING", "CLUSTER_TAGS", "SDN_NETWORK_TYPE"))
 		})
 	})
+	When("Enrich a cluster event with fields to be transformed, keeping the key", func() {
+		It("gets transformed correctly", func() {
+			message := "Cluster with ID myid updated"
+			event := getEvent("cluster_updated", message)
+			cluster := map[string]interface{}{
+				"connectivity_majority_groups": `{
+      "192.168.127.0/24": [
+        "1bfde6e7-5a8a-44ae-af23-2af97809f49a",
+        "6cc4535b-3fe2-44d8-bf17-53d633c89b32",
+        "9f532128-bfc3-4b6d-8214-79a29f91a2af",
+        "a1b75d16-536f-463f-a3c5-0bf628b5774a",
+        "e4f245fd-5498-4d72-8dfd-1b6af5546c39"
+     ]
+}`,
+			}
+			hosts := getHosts()
+			infraEnvs := getInfraEnvs()
+			enrichedEvent := enricher.GetEnrichedEvent(event, cluster, hosts, infraEnvs)
+
+			connectivityMajorityGroups, ok := enrichedEvent.Cluster["connectivity_majority_groups"]
+			Expect(ok).To(BeTrue())
+
+			connectivityMajorityGroupsList, ok := connectivityMajorityGroups.([]interface{})
+			Expect(ok).To(BeTrue())
+			Expect(len(connectivityMajorityGroupsList)).To(Equal(1))
+
+			keys := make([]string, 0)
+			for _, m := range connectivityMajorityGroupsList {
+				conn, ok := m.(map[string]interface{})
+				Expect(ok).To(BeTrue())
+				key, ok := conn["key"].(string)
+				Expect(ok).To(BeTrue())
+				_, ok = conn["value"].([]interface{})
+				Expect(ok).To(BeTrue())
+				keys = append(keys, key)
+			}
+			Expect(keys).To(ContainElements("192.168.127.0/24"))
+			clusterHosts, ok := enrichedEvent.Cluster["hosts"].([]interface{})
+			Expect(ok).To(BeTrue())
+
+			for _, host := range clusterHosts {
+				h, ok := host.(map[string]interface{})
+				Expect(ok).To(BeTrue())
+
+				disksInfo, ok := h["disks_info"]
+				Expect(ok).To(BeTrue())
+
+				disksInfoList, ok := disksInfo.([]interface{})
+				Expect(ok).To(BeTrue())
+				Expect(len(disksInfoList)).To(Equal(1))
+				for _, disk := range disksInfoList {
+					m, ok := disk.(map[string]interface{})
+					Expect(ok).To(BeTrue())
+					id, ok := m["id"]
+					Expect(ok).To(BeTrue())
+					Expect(id).To(Equal("/dev/disk/by-id/wwn-0x05abcd000d44cc35"))
+				}
+			}
+		})
+	})
 	When("Enrich a cluster event with deep fields to be unpacked", func() {
 		It("gets unpacked correctly", func() {
 			message := "Cluster with ID myid updated"
@@ -265,6 +325,7 @@ func getHosts() []map[string]interface{} {
 			"foo":          "foobar",
 			"infra_env_id": "94b5c5b6-f798-41cc-9187-ffe14df68d48",
 			"user_name":    "my sensitive data",
+			"disks_info":   `{"/dev/disk/by-id/wwn-0x05abcd000d44cc35":{"disk_speed":{"speed_ms":123,"tested":true},"path":"abcdefg"}}`,
 			"inventory":    `{"bmc_address":"0.0.0.0","bmc_v6address":"::/0","boot":{"current_boot_mode":"bios"},"cpu":{"architecture":"x86_64","count":16,"flags":["fpu","vme","de","pse","tsc","msr","pae","mce","cx8","apic","sep","mtrr","pge","mca","cmov","pat","pse36","clflush","mmx","fxsr","sse","sse2","ss","syscall","nx","pdpe1gb","rdtscp","lm","constant_tsc","arch_perfmon","rep_good","nopl","xtopology","cpuid","tsc_known_freq","pni","pclmulqdq","vmx","ssse3","fma","cx16","pdcm","pcid","sse4_1","sse4_2","x2apic","movbe","popcnt","tsc_deadline_timer","aes","xsave","avx","f16c","rdrand","hypervisor","lahf_lm","abm","3dnowprefetch","cpuid_fault","invpcid_single","ssbd","ibrs","ibpb","stibp","ibrs_enhanced","tpr_shadow","vnmi","flexpriority","ept","vpid","ept_ad","fsgsbase","tsc_adjust","bmi1","avx2","smep","bmi2","erms","invpcid","mpx","avx512f","avx512dq","rdseed","adx","smap","clflushopt","clwb","avx512cd","avx512bw","avx512vl","xsaveopt","xsavec","xgetbv1","xsaves","arat","umip","pku","ospke","avx512_vnni","md_clear","arch_capabilities"],"frequency":2095.076,"model_name":"Intel(R) Xeon(R) Gold 5218R CPU @ 2.10GHz"},"disks":[{"by_id":"/dev/disk/by-id/wwn-0x05abcdb535529a2a","by_path":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:0","drive_type":"HDD","has_uuid":true,"hctl":"0:0:0:0","id":"/dev/disk/by-id/wwn-0x05abcdb535529a2a","installation_eligibility":{"eligible":true,"not_eligible_reasons":null},"model":"QEMU_HARDDISK","name":"sda","path":"/dev/sda","serial":"05abcdb535529a2a","size_bytes":141733920768,"smart":"SMART support is:     Unavailable - device lacks SMART capability.\n","vendor":"QEMU","wwn":"0x05abcdb535529a2a"},{"bootable":true,"by_path":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:3","drive_type":"ODD","has_uuid":true,"hctl":"0:0:0:3","id":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:3","installation_eligibility":{"not_eligible_reasons":["Disk is removable","Disk is too small (disk only has 1.2 GB, but 20 GB are required)","Drive type is ODD, it must be one of HDD, SSD, Multipath."]},"is_installation_media":true,"model":"QEMU_CD-ROM","name":"sr0","path":"/dev/sr0","removable":true,"serial":"drive-scsi0-0-0-3","size_bytes":1212153856,"smart":"SMART support is:     Unavailable - device lacks SMART capability.\n","vendor":"QEMU"}],"gpus":[{"address":"0000:00:02.0"}],"hostname":"master-0-0","interfaces":[{"flags":["up","broadcast","multicast"],"has_carrier":true,"ipv4_addresses":["192.168.123.55/24"],"ipv6_addresses":[],"mac_address":"52:54:00:f2:cb:55","mtu":1500,"name":"ens3","product":"0x0001","speed_mbps":-1,"type":"physical","vendor":"0x1af4"}],"memory":{"physical_bytes":34359738368,"physical_bytes_method":"dmidecode","usable_bytes":33706188800},"routes":[{"destination":"0.0.0.0","family":2,"gateway":"192.168.123.1","interface":"ens3","metric":100},{"destination":"10.88.0.0","family":2,"interface":"cni-podman0"},{"destination":"192.168.123.0","family":2,"interface":"ens3","metric":100},{"destination":"::1","family":10,"interface":"lo","metric":256},{"destination":"fe80::","family":10,"interface":"cni-podman0","metric":256},{"destination":"fe80::","family":10,"interface":"ens3","metric":1024}],"system_vendor":{"manufacturer":"Red Hat","product_name":"KVM","virtual":true},"tpm_version":"none"}`,
 		},
 		{
@@ -272,6 +333,7 @@ func getHosts() []map[string]interface{} {
 			"foo":          "foobar",
 			"infra_env_id": "177880c8-7c2c-49d3-b7c2-42625c31eb05",
 			"user_name":    "my sensitive data",
+			"disks_info":   `{"/dev/disk/by-id/wwn-0x05abcd000d44cc35":{"disk_speed":{"speed_ms":123,"tested":true},"path":"abcdefg"}}`,
 			"inventory":    `{"bmc_address":"0.0.0.0","bmc_v6address":"::/0","boot":{"current_boot_mode":"bios"},"cpu":{"architecture":"x86_64","count":16,"flags":["fpu","vme","de","pse","tsc","msr","pae","mce","cx8","apic","sep","mtrr","pge","mca","cmov","pat","pse36","clflush","mmx","fxsr","sse","sse2","ss","syscall","nx","pdpe1gb","rdtscp","lm","constant_tsc","arch_perfmon","rep_good","nopl","xtopology","cpuid","tsc_known_freq","pni","pclmulqdq","vmx","ssse3","fma","cx16","pdcm","pcid","sse4_1","sse4_2","x2apic","movbe","popcnt","tsc_deadline_timer","aes","xsave","avx","f16c","rdrand","hypervisor","lahf_lm","abm","3dnowprefetch","cpuid_fault","invpcid_single","ssbd","ibrs","ibpb","stibp","ibrs_enhanced","tpr_shadow","vnmi","flexpriority","ept","vpid","ept_ad","fsgsbase","tsc_adjust","bmi1","avx2","smep","bmi2","erms","invpcid","mpx","avx512f","avx512dq","rdseed","adx","smap","clflushopt","clwb","avx512cd","avx512bw","avx512vl","xsaveopt","xsavec","xgetbv1","xsaves","arat","umip","pku","ospke","avx512_vnni","md_clear","arch_capabilities"],"frequency":2095.076,"model_name":"Intel(R) Xeon(R) Gold 5218R CPU @ 2.10GHz"},"disks":[{"by_id":"/dev/disk/by-id/wwn-0x05abcdb535529a2a","by_path":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:0","drive_type":"HDD","has_uuid":true,"hctl":"0:0:0:0","id":"/dev/disk/by-id/wwn-0x05abcdb535529a2a","installation_eligibility":{"eligible":true,"not_eligible_reasons":null},"model":"QEMU_HARDDISK","name":"sda","path":"/dev/sda","serial":"05abcdb535529a2a","size_bytes":141733920768,"smart":"SMART support is:     Unavailable - device lacks SMART capability.\n","vendor":"QEMU","wwn":"0x05abcdb535529a2a"},{"bootable":true,"by_path":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:3","drive_type":"ODD","has_uuid":true,"hctl":"0:0:0:3","id":"/dev/disk/by-path/pci-0000:00:04.0-scsi-0:0:0:3","installation_eligibility":{"not_eligible_reasons":["Disk is removable","Disk is too small (disk only has 1.2 GB, but 20 GB are required)","Drive type is ODD, it must be one of HDD, SSD, Multipath."]},"is_installation_media":true,"model":"QEMU_CD-ROM","name":"sr0","path":"/dev/sr0","removable":true,"serial":"drive-scsi0-0-0-3","size_bytes":1212153856,"smart":"SMART support is:     Unavailable - device lacks SMART capability.\n","vendor":"QEMU"}],"gpus":[{"address":"0000:00:02.0"}],"hostname":"master-0-0","interfaces":[{"flags":["up","broadcast","multicast"],"has_carrier":true,"ipv4_addresses":["192.168.123.55/24"],"ipv6_addresses":[],"mac_address":"52:54:00:f2:cb:55","mtu":1500,"name":"ens3","product":"0x0001","speed_mbps":-1,"type":"physical","vendor":"0x1af4"}],"memory":{"physical_bytes":34359738368,"physical_bytes_method":"dmidecode","usable_bytes":33706188800},"routes":[{"destination":"0.0.0.0","family":2,"gateway":"192.168.123.1","interface":"ens3","metric":100},{"destination":"10.88.0.0","family":2,"interface":"cni-podman0"},{"destination":"192.168.123.0","family":2,"interface":"ens3","metric":100},{"destination":"::1","family":10,"interface":"lo","metric":256},{"destination":"fe80::","family":10,"interface":"cni-podman0","metric":256},{"destination":"fe80::","family":10,"interface":"ens3","metric":1024}],"system_vendor":{"manufacturer":"Red Hat","product_name":"KVM","virtual":true},"tpm_version":"none"}`,
 		},
 	}
