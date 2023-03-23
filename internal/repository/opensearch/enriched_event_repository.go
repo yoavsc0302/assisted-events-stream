@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	opensearch "github.com/opensearch-project/opensearch-go"
@@ -61,9 +62,10 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 			r.ackChannel <- *msg
 		},
 		OnFailure: func(ctx context.Context, item opensearchutil.BulkIndexerItem, resp opensearchutil.BulkIndexerResponseItem, err error) {
+			bodyBytes, _ := io.ReadAll(item.Body)
 			r.logger.WithError(err).WithFields(logrus.Fields{
 				"document_id": item.DocumentID,
-				"item":        item,
+				"item":        string(bodyBytes),
 				"action":      item.Action,
 				"index":       item.Index,
 				"response":    resp,
