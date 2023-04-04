@@ -111,7 +111,6 @@ func (r *KafkaReader) Consume(ctx context.Context, processMessageFn func(ctx con
 			r.logger.WithFields(fields).Debug("message processed")
 		}
 	}
-	return nil
 }
 
 func (r *KafkaReader) listenForCommit(ctx context.Context) {
