@@ -36,7 +36,7 @@ func Transform(jsonBytes []byte, paths []string, transformFn func(unpacked inter
 		}
 
 		if err != nil {
-			// handle error
+			continue
 		}
 
 		// set changed value
@@ -53,7 +53,7 @@ func Transform(jsonBytes []byte, paths []string, transformFn func(unpacked inter
 func transformFromComplexPath(jsonBytes []byte, complexPath string, transformChildFn func(unpacked interface{}) (interface{}, error)) ([]byte, error) {
 	paths := strings.Split(complexPath, "[*]")
 	if len(paths) != 2 {
-		return jsonBytes, fmt.Errorf("ComplexPath %s is not supported", complexPath)
+		return jsonBytes, fmt.Errorf("complexPath %s is not supported", complexPath)
 	}
 	parent := paths[0]
 	child := strings.Trim(paths[1], ".")
@@ -61,19 +61,23 @@ func transformFromComplexPath(jsonBytes []byte, complexPath string, transformChi
 	transformChildrenFn := func(unpacked interface{}) (interface{}, error) {
 		parentList, ok := unpacked.([]interface{})
 		if !ok {
-			return unpacked, fmt.Errorf("Node %s not a list", parent)
+			return unpacked, fmt.Errorf("node %s not a list", parent)
 		}
 		items := make([]interface{}, 0)
-		for _, v := range parentList {
-			jsonBytes, err := json.Marshal(&v)
+		for i := range parentList {
+			var err error
+			jsonBytes, err = json.Marshal(&parentList[i])
 			if err != nil {
 				return unpacked, err
 			}
 			jsonBytes, err = Transform(jsonBytes, []string{child}, transformChildFn)
+			if err != nil {
+				continue
+			}
 			var item interface{}
 			err = json.Unmarshal(jsonBytes, &item)
 			if err != nil {
-				// handle error
+				continue
 			}
 			items = append(items, item)
 		}

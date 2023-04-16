@@ -127,36 +127,6 @@ func getKafkaMessage(payload string) *kafka.Message {
 	return message
 }
 
-func getComplexClusterEventPayload() string {
-	return `{
-  "name": "Event",
-  "payload": {
-    "ID": 3375345,
-    "CreatedAt": "2023-01-20T02:20:44.528781934Z",
-    "UpdatedAt": "2023-01-20T02:20:44.528781934Z",
-    "DeletedAt": null,
-    "category": "user",
-    "cluster_id": "391d46b5-169b-4ffb-bce4-43ebdfe66b5c",
-    "event_time": "2023-01-20T02:20:44.527Z",
-    "host_id": "e7036c57-e855-4d3f-815d-5ba35efd49a7",
-    "infra_env_id": "89d988b0-a590-4ec5-b4ee-55269ac101b6",
-    "message": "Host e7036c57-e855-4d3f-815d-5ba35efd49a7: Successfully registered",
-    "name": "host_registration_succeeded",
-    "request_id": "c49fc01a-9698-42c8-8db0-268525060e92",
-    "severity": "info"
-  },
-  "metadata": {
-    "versions": {
-      "SelfVersion": "quay.io/app-sre/assisted-service:3c49745",
-      "AgentDockerImg": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-agent-rhel8:latest",
-      "InstallerImage": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest",
-      "ControllerImage": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-reporter-rhel8:latest",
-      "ReleaseTag": "master"
-    }
-  }
-}`
-}
-
 func getBasicClusterEventPayload() string {
 	return `{
   "name": "Event",

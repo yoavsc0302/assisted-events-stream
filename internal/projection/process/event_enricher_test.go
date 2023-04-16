@@ -86,9 +86,11 @@ var _ = Describe("Process message", func() {
 
 			keys := make([]string, 0)
 			for _, m := range connectivityMajorityGroupsList {
-				conn, ok := m.(map[string]interface{})
+				var conn map[string]interface{}
+				conn, ok = m.(map[string]interface{})
 				Expect(ok).To(BeTrue())
-				key, ok := conn["key"].(string)
+				var key string
+				key, ok = conn["key"].(string)
 				Expect(ok).To(BeTrue())
 				_, ok = conn["value"].([]interface{})
 				Expect(ok).To(BeTrue())
@@ -150,6 +152,7 @@ var _ = Describe("Process message", func() {
 				Expect(ok).To(BeTrue())
 
 				architecture, ok := c["architecture"]
+				Expect(ok).To(BeTrue())
 				Expect(architecture).To(Equal("x86_64"))
 			}
 		})

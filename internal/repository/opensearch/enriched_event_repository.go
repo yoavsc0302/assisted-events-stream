@@ -72,7 +72,10 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 			}).Error("error bulk indexing document")
 		},
 	}
-	r.bulk.Add(ctx, item)
+	err = r.bulk.Add(ctx, item)
+	if err != nil {
+		return err
+	}
 
 	r.logger.WithFields(logrus.Fields{
 		"id":    enrichedEvent.ID,
