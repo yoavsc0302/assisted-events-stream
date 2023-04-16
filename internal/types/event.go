@@ -26,6 +26,7 @@ type EnrichedEvent struct {
 	Cluster      map[string]interface{}   `json:"cluster"`
 	InfraEnvs    []map[string]interface{} `json:"infra_envs,omitempty"`
 	Versions     map[string]interface{}   `json:"versions"`
+	ReleaseTag   *string                  `json:"release_tag,omitempty"`
 }
 
 type EmbeddedEvent struct {

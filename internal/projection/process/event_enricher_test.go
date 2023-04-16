@@ -302,12 +302,89 @@ var _ = Describe("Process message", func() {
 			assertHostsSummary(enrichedEvent)
 		})
 	})
+	When("Enrich a cluster event with different release tag locations", func() {
+		It("with release tag as metadata", func() {
+			myMetadata := map[string]interface{}{
+				"versions": map[string]interface{}{
+					"release_tag": "foobar",
+					"versions": map[string]interface{}{
+						"assisted-installer":            "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest",
+						"assisted-installer-controller": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-reporter-rhel8:latest",
+						"assisted-installer-service":    "quay.io/app-sre/assisted-service:880ad10",
+						"discovery-agent":               "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-agent-rhel8:latest",
+					},
+				},
+			}
+
+			message := "Cluster with ID myid updated"
+			event := getEventWithMetadata("cluster_updated", message, myMetadata)
+			cluster := map[string]interface{}{
+				"foo": "bar",
+			}
+			hosts := getHosts()
+			infraEnvs := getInfraEnvs()
+			enrichedEvent := enricher.GetEnrichedEvent(event, cluster, hosts, infraEnvs)
+			Expect(enrichedEvent.ReleaseTag).To(Not(BeNil()))
+			Expect(*enrichedEvent.ReleaseTag).To(Equal("foobar"))
+
+			assistedInstallerVersionInterface, ok := enrichedEvent.Versions["assisted-installer"]
+			Expect(ok).To(BeTrue())
+
+			assistedInstallerVersion, ok := assistedInstallerVersionInterface.(string)
+			Expect(ok).To(BeTrue())
+
+			Expect(assistedInstallerVersion).To(Equal("registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest"))
+		})
+
+		It("with no release tag", func() {
+			myMetadata := map[string]interface{}{
+				"versions": map[string]interface{}{
+					"assisted-installer":            "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest",
+					"assisted-installer-controller": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-reporter-rhel8:latest",
+					"assisted-installer-service":    "quay.io/app-sre/assisted-service:880ad10",
+					"discovery-agent":               "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-agent-rhel8:latest",
+				},
+			}
+
+			message := "Cluster with ID myid updated"
+			event := getEventWithMetadata("cluster_updated", message, myMetadata)
+			cluster := map[string]interface{}{
+				"foo": "bar",
+			}
+			hosts := getHosts()
+			infraEnvs := getInfraEnvs()
+			enrichedEvent := enricher.GetEnrichedEvent(event, cluster, hosts, infraEnvs)
+			Expect(enrichedEvent.ReleaseTag).To(BeNil())
+
+			assistedInstallerVersionInterface, ok := enrichedEvent.Versions["assisted-installer"]
+			Expect(ok).To(BeTrue())
+
+			assistedInstallerVersion, ok := assistedInstallerVersionInterface.(string)
+			Expect(ok).To(BeTrue())
+
+			Expect(assistedInstallerVersion).To(Equal("registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest"))
+		})
+	})
 })
 
 func getEvent(name, message string) *types.Event {
 	metadata := map[string]interface{}{
 		"foo": "bar",
 	}
+	payload := map[string]interface{}{
+		"name":       name,
+		"message":    message,
+		"event_time": "2023-01-27T03:40:08.998Z",
+		"props":      `{"foobar":"barfoo", "fooqux":1}`,
+	}
+	return &types.Event{
+		Name:     "Foobar",
+		Payload:  payload,
+		Metadata: metadata,
+	}
+}
+
+func getEventWithMetadata(name, message string, metadata map[string]interface{}) *types.Event {
 	payload := map[string]interface{}{
 		"name":       name,
 		"message":    message,
