@@ -49,3 +49,14 @@ generate-mocks: ## Generate mocks
 .PHONY: unit-test
 unit-test: generate-mocks ## Run unit tests
 	ginkgo -r
+
+.PHONY: lint
+lint:	
+	golangci-lint run -v
+
+.PHONY: format
+format:
+	golangci-lint run --fix -v
+
+.PHONY: validate
+validate: lint unit-test

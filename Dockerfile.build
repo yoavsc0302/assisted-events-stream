@@ -16,3 +16,4 @@ RUN go install github.com/golang/mock/mockgen@v1.5.0 &&\
     export PATH=$PATH:$HOME/go/bin/
 
 COPY --from=quay.io/openshift/origin-cli:4.10 /usr/bin/oc /usr/bin/kubectl /usr/bin/
+COPY --from=quay.io/app-sre/golangci-lint:v1.46.0 /usr/bin/golangci-lint /usr/bin/golangci-lint
