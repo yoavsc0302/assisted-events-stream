@@ -31,7 +31,7 @@ func NewEventEnricher(logger *logrus.Logger) *EventEnricher {
 }
 
 func (e *EventEnricher) GetEnrichedEvent(event *types.Event, cluster map[string]interface{}, hosts []map[string]interface{}, infraEnvs []map[string]interface{}) *types.EnrichedEvent {
-	enrichedEvent, err := GetBaseEnrichedEvent(event, cluster, hosts, infraEnvs)
+	enrichedEvent, err := e.GetBaseEnrichedEvent(event, cluster, hosts, infraEnvs)
 	if err != nil {
 		e.logger.WithError(err).Debug("Error creating base enriched event")
 	}
@@ -88,14 +88,18 @@ func (e *EventEnricher) addHostsSummaryJson(eventJson []byte) ([]byte, error) {
 }
 
 // Get enriched event before applying any transformation
-func GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, hosts []map[string]interface{}, infraEnvs []map[string]interface{}) (*types.EnrichedEvent, error) {
+func (e *EventEnricher) GetBaseEnrichedEvent(event *types.Event, cluster map[string]interface{}, hosts []map[string]interface{}, infraEnvs []map[string]interface{}) (*types.EnrichedEvent, error) {
 	namespace, err := uuid.FromBytes([]byte("abcdefghilmnopqr"))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting uuid namespace, most likely seed is not 16 characters")
 	}
 
 	enrichedEvent := &types.EnrichedEvent{}
-	enrichedEvent.Event.Properties = getProps(event.Payload)
+	props, err := getProps(event.Payload)
+	if err != nil {
+		e.logger.WithError(err).Debug("error while extracting event props")
+	}
+	enrichedEvent.Event.Properties = props
 	eventBytes, err := json.Marshal(event.Payload)
 	if err != nil {
 		return enrichedEvent, err
@@ -137,16 +141,19 @@ func (e *EventEnricher) getEnrichedEventFromJson(eventJson []byte) *types.Enrich
 	return &outEvent
 }
 
-func getProps(eventPayload interface{}) map[string]interface{} {
+func getProps(eventPayload interface{}) (map[string]interface{}, error) {
 	defaultProps := map[string]interface{}{}
 	if payload, ok := eventPayload.(map[string]interface{}); ok {
 		if rawProps, ok := payload["props"]; ok {
 			if p, ok := rawProps.(string); ok {
 				structuredProps := map[string]interface{}{}
-				json.Unmarshal([]byte(p), &structuredProps)
-				return structuredProps
+				err := json.Unmarshal([]byte(p), &structuredProps)
+				if err != nil {
+					return structuredProps, err
+				}
+				return structuredProps, nil
 			}
 		}
 	}
-	return defaultProps
+	return defaultProps, nil
 }

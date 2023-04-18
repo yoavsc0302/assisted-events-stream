@@ -11,7 +11,7 @@ import (
 // Anonymize sensitive data
 func anonymizeJson(jsonBytes []byte, paths map[string]string) ([]byte, error) {
 	keys := []string{}
-	for k, _ := range paths {
+	for k := range paths {
 		keys = append(keys, k)
 	}
 	hash := func(unpacked interface{}) (interface{}, error) {

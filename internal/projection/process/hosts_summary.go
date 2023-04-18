@@ -39,7 +39,7 @@ func normalizeInfraEnvStats(stats *types.HostsInfraEnvSummary, total int) {
 }
 
 func updateInfraEnvStats(stats *types.HostsInfraEnvSummary, infraEnv map[string]interface{}) {
-	for k, _ := range *stats {
+	for k := range *stats {
 		if s, ok := infraEnv[k]; ok {
 			if label, ok := s.(string); ok {
 				// avoid ambiguous values/labels (i.e. 4.12)

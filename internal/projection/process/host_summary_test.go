@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("Process hosts summary", func() {
@@ -21,8 +22,9 @@ var _ = Describe("Process hosts summary", func() {
 	})
 	When("Summary of an emtpy cluster", func() {
 		It("Should generate proper summary", func() {
-			enrichedEvent := getEnrichedEvent()
-			err := AddHostsSummary(enrichedEvent)
+			enrichedEvent, err := getEnrichedEvent()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = AddHostsSummary(enrichedEvent)
 			Expect(err).NotTo(HaveOccurred())
 
 			assertHostsSummary(enrichedEvent)
@@ -59,16 +61,16 @@ func assertHostsSummary(enrichedEvent *types.EnrichedEvent) {
 	version, ok := openshiftVersion["4_12"]
 	Expect(ok).To(BeTrue())
 	Expect(version).To(Equal(1.0))
-	version, ok = openshiftVersion["4.12"]
+	_, ok = openshiftVersion["4.12"]
 	Expect(ok).NotTo(BeTrue())
-
 }
 
-func getEnrichedEvent() *types.EnrichedEvent {
+func getEnrichedEvent() (*types.EnrichedEvent, error) {
 	cluster := map[string]interface{}{
 		"id": "foobar",
 	}
-	event, _ := GetBaseEnrichedEvent(
+	eventEnricher := EventEnricher{logger: logrus.New()}
+	event, _ := eventEnricher.GetBaseEnrichedEvent(
 		getEvent("foobar", "my message"),
 		cluster,
 		getHosts(),
@@ -77,9 +79,16 @@ func getEnrichedEvent() *types.EnrichedEvent {
 	outEvent := types.EnrichedEvent{}
 
 	// Marshal and unmarshal to have more realistic types
-	jsonBytes, _ := json.Marshal(event)
-	json.Unmarshal(jsonBytes, &outEvent)
-	return &outEvent
+	jsonBytes, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(jsonBytes, &outEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	return &outEvent, nil
 }
 
 func TestProjectionProcessHostsSummary(t *testing.T) {

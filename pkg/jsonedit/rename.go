@@ -47,11 +47,18 @@ func Rename(jsonBytes []byte, paths map[string]string) ([]byte, error) {
 			items := []interface{}{}
 
 			for _, child := range parentList {
-				childBytes, err := json.Marshal(child)
-				renamedBytes, err := Rename(childBytes, renamePaths)
-
+				var childBytes []byte
+				childBytes, err = json.Marshal(child)
+				if err != nil {
+					continue
+				}
+				var renamedBytes []byte
+				renamedBytes, err = Rename(childBytes, renamePaths)
+				if err != nil {
+					continue
+				}
 				var item interface{}
-				err = json.Unmarshal([]byte(renamedBytes), &item)
+				err = json.Unmarshal(renamedBytes, &item)
 				if err != nil {
 					// could be scalar
 					item = raw
