@@ -109,14 +109,71 @@ func (e *EventEnricher) GetBaseEnrichedEvent(event *types.Event, cluster map[str
 
 	enrichedEvent.ID = uuid.NewSHA1(namespace, []byte(enrichedEvent.Message+enrichedEvent.EventTime)).String()
 
-	if versions, ok := event.Metadata["versions"]; ok {
-		if v, ok := versions.(map[string]interface{}); ok {
-			enrichedEvent.Versions = v
-		}
-	}
+	enrichedEvent.Versions = e.getVersionsFromMetadata(event.Metadata, enrichedEvent.Name)
+	enrichedEvent.ReleaseTag = e.getReleaseTagFromMetadata(event.Metadata, enrichedEvent.Name)
+
 	enrichedEvent.Cluster = cluster
 	enrichedEvent.InfraEnvs = infraEnvs
 	return enrichedEvent, err
+}
+
+func (e *EventEnricher) getVersionsFromMetadata(metadata map[string]interface{}, eventName string) map[string]interface{} {
+	var (
+		versionsMapInterface interface{}
+		versionsMap          map[string]interface{}
+		versionsInterface    interface{}
+		innerVersionsMap     map[string]interface{}
+		ok                   bool
+	)
+	if versionsMapInterface, ok = metadata["versions"]; !ok {
+		e.logger.Debugf("No versions found in event %s", eventName)
+		return nil
+	}
+
+	if versionsMap, ok = versionsMapInterface.(map[string]interface{}); !ok {
+		e.logger.Debugf("The found versions in %s are not a valid map", eventName)
+		return nil
+	}
+
+	if versionsInterface, ok = versionsMap["versions"]; !ok {
+		return versionsMap
+	}
+
+	if innerVersionsMap, ok = versionsInterface.(map[string]interface{}); !ok {
+		e.logger.Debugf("The found versions in %s are not a valid map", eventName)
+		return versionsMap
+	}
+
+	return innerVersionsMap
+}
+
+func (e *EventEnricher) getReleaseTagFromMetadata(metadata map[string]interface{}, eventName string) *string {
+	var (
+		versionsMapInterface interface{}
+		versionsMap          map[string]interface{}
+		releaseTagInterface  interface{}
+		releaseTag           string
+		ok                   bool
+	)
+	if versionsMapInterface, ok = metadata["versions"]; !ok {
+		e.logger.Debugf("No versions found in event %s", eventName)
+		return nil
+	}
+	if versionsMap, ok = versionsMapInterface.(map[string]interface{}); !ok {
+		e.logger.Debugf("The found versions in %s are not a valid map", eventName)
+		return nil
+	}
+
+	if releaseTagInterface, ok = versionsMap["release_tag"]; !ok {
+		e.logger.Debugf("No release tag found in %s", eventName)
+		return nil
+	}
+	if releaseTag, ok = releaseTagInterface.(string); !ok {
+		e.logger.Debugf("The release tag found in %s is not a valid string", eventName)
+		return nil
+	}
+
+	return &releaseTag
 }
 
 func getHostsWithEmbeddedInfraEnv(hosts []map[string]interface{}, infraEnvs []map[string]interface{}) []map[string]interface{} {
