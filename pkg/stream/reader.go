@@ -3,12 +3,15 @@ package stream
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	kafka "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
+	"github.com/segmentio/kafka-go/sasl/scram"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,10 +36,24 @@ type KafkaConfig struct {
 	BootstrapServer string `envconfig:"KAFKA_BOOTSTRAP_SERVER" required:"true"`
 	ClientID        string `envconfig:"KAFKA_CLIENT_ID" default:""`
 	ClientSecret    string `envconfig:"KAFKA_CLIENT_SECRET" default:""`
+	SaslMechanism   string `envconfig:"KAFKA_SASL_MECHANISM" default:"PLAIN"`
 	Topic           string `envconfig:"KAFKA_EVENT_STREAM_TOPIC" required:"true"`
 	GroupID         string `envconfig:"KAFKA_GROUP_ID" required:"true"`
 }
 
+func getMechanism(envConfig *KafkaConfig) (sasl.Mechanism, error) {
+	if envConfig.SaslMechanism == "PLAIN" {
+		return &plain.Mechanism{
+			Username: envConfig.ClientID,
+			Password: envConfig.ClientSecret,
+		}, nil
+	}
+	if envConfig.SaslMechanism == "SCRAM" {
+		return scram.Mechanism(scram.SHA512, envConfig.ClientID, envConfig.ClientSecret)
+	}
+	return nil, fmt.Errorf("SASL Mechanism %s not implemented", envConfig.SaslMechanism)
+
+}
 func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*KafkaReader, error) {
 	envConfig := &KafkaConfig{}
 	err := envconfig.Process("", envConfig)
@@ -53,11 +70,10 @@ func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*Kafk
 		CommitInterval: time.Second * 10,
 	}
 	if envConfig.ClientID != "" && envConfig.ClientSecret != "" {
-		mechanism := &plain.Mechanism{
-			Username: envConfig.ClientID,
-			Password: envConfig.ClientSecret,
+		mechanism, err := getMechanism(envConfig)
+		if err != nil {
+			return nil, err
 		}
-
 		dialer := &kafka.Dialer{
 			SASLMechanism: mechanism,
 			TLS:           &tls.Config{},
