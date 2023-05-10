@@ -51,7 +51,10 @@ func (p *EnrichedEventsProjection) ProcessMessage(ctx context.Context, msg *kafk
 
 	event, err := getEventFromMessage(msg)
 	if err != nil {
-		return err
+		p.logger.WithError(err).WithFields(logrus.Fields{
+			"message": msg,
+		}).Error("could not get event from message")
+		return nil
 	}
 	return p.ProcessEvent(ctx, event, msg)
 }
