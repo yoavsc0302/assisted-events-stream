@@ -49,6 +49,8 @@ parameters:
   value: "false"
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: assisted-installer-event-stream
+- name: KAFKA_SASL_MECHANISM
+  value: "PLAIN"
 - name: LOG_LEVEL
   value: info
 objects:
@@ -98,6 +100,8 @@ objects:
             value: ${LOG_LEVEL}
           - name: KAFKA_GROUP_ID
             value: ${KAFKA_GROUP_ID}
+          - name: KAFKA_SASL_MECHANISM
+            value: ${KAFKA_SASL_MECHANISM}
           - name: KAFKA_BOOTSTRAP_SERVER
             valueFrom:
               secretKeyRef:
