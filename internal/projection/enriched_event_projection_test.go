@@ -49,6 +49,13 @@ var _ = Describe("Process message", func() {
 		mockInfraEnvs = getMockInfraEnvs()
 		mockEnrichedEvent = getMockEnrichedEvent()
 	})
+	When("Processing an invalid message", func() {
+		It("should not return error", func() {
+			msg := getKafkaMessage("not json")
+			err := projection.ProcessMessage(ctx, msg)
+			Expect(err).To(BeNil())
+		})
+	})
 	When("Processing a cluster event", func() {
 		It("should retrieve all related info and store it", func() {
 			eventPayload := getBasicClusterEventPayload()
