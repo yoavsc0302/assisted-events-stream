@@ -2,9 +2,58 @@
   path: /objects/0
   value:
     apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: ai-kafka
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: kafka
+      annotations:
+    automountServiceAccountToken: true
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: ai-kafka-zookeeper-scripts
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
+    data:
+      init-certs.sh: |-
+        #!/bin/bash
+      setup.sh: |-
+        #!/bin/bash
+
+        # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
+        # check ZOO_SERVER_ID in persistent volume via myid
+        # if not present, set based on POD hostname
+        if [[ -f "/bitnami/zookeeper/data/myid" ]]; then
+            export ZOO_SERVER_ID="$(cat /bitnami/zookeeper/data/myid)"
+        else
+            HOSTNAME="$(hostname -s)"
+            if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+                ORD=${BASH_REMATCH[2]}
+                export ZOO_SERVER_ID="$((ORD + 1 ))"
+            else
+                echo "Failed to get index from hostname $HOST"
+                exit 1
+            fi
+        fi
+        exec /entrypoint.sh /run.sh
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
     kind: ConfigMap
     metadata:
       name: ai-kafka-scripts
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/instance: ai-kafka
     data:
       setup.sh: |-
         #!/bin/bash
@@ -15,13 +64,68 @@
         else
             export KAFKA_CFG_BROKER_ID="$((ID + 0))"
         fi
-        export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=${KAFKA_CFG_BROKER_ID}@${MY_POD_NAME}.ai-kafka-headless.${NAMESPACE}.svc.cluster.local:9093
+
         # Configure zookeeper client
 
         exec /entrypoint.sh /run.sh
-      create_topic.sh: |-
-        #!/bin/bash
-        kafka-topics.sh --bootstrap-server localhost:9092 --topic events-stream --create --partitions 6 --replication-factor 1
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: ai-kafka-zookeeper-headless
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
+    spec:
+      type: ClusterIP
+      clusterIP: None
+      publishNotReadyAddresses: true
+      ports:
+        - name: tcp-client
+          port: 2181
+          targetPort: client
+        - name: tcp-follower
+          port: 2888
+          targetPort: follower
+        - name: tcp-election
+          port: 3888
+          targetPort: election
+      selector:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: ai-kafka-zookeeper
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
+    spec:
+      type: ClusterIP
+      sessionAffinity: None
+      ports:
+        - name: tcp-client
+          port: 2181
+          targetPort: client
+          nodePort: null
+        - name: tcp-follower
+          port: 2888
+          targetPort: follower
+        - name: tcp-election
+          port: 3888
+          targetPort: election
+      selector:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
 - op: add
   path: /objects/0
   value:
@@ -29,6 +133,10 @@
     kind: Service
     metadata:
       name: ai-kafka-headless
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: kafka
     spec:
       type: ClusterIP
       clusterIP: None
@@ -52,6 +160,10 @@
     kind: Service
     metadata:
       name: ai-kafka
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: kafka
     spec:
       type: ClusterIP
       sessionAffinity: None
@@ -65,6 +177,157 @@
         app.kubernetes.io/name: kafka
         app.kubernetes.io/instance: ai-kafka
         app.kubernetes.io/component: kafka
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: ai-kafka-zookeeper
+      labels:
+        app.kubernetes.io/name: zookeeper
+        app.kubernetes.io/instance: ai-kafka
+        app.kubernetes.io/component: zookeeper
+        role: zookeeper
+    spec:
+      replicas: 1
+      podManagementPolicy: Parallel
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: zookeeper
+          app.kubernetes.io/instance: ai-kafka
+          app.kubernetes.io/component: zookeeper
+      serviceName: ai-kafka-zookeeper-headless
+      updateStrategy:
+        rollingUpdate: {}
+        type: RollingUpdate
+      template:
+        metadata:
+          annotations:
+          labels:
+            app.kubernetes.io/name: zookeeper
+            app.kubernetes.io/instance: ai-kafka
+            app.kubernetes.io/component: zookeeper
+        spec:
+          serviceAccountName: default
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        app.kubernetes.io/name: zookeeper
+                        app.kubernetes.io/instance: ai-kafka
+                        app.kubernetes.io/component: zookeeper
+                    namespaces:
+                      - "${NAMESPACE}"
+                    topologyKey: kubernetes.io/hostname
+                  weight: 1
+          securityContext:
+            fsGroup: 1001
+          initContainers:
+          containers:
+            - name: zookeeper
+              image: docker.io/bitnami/zookeeper:3.8.0-debian-10-r64
+              imagePullPolicy: "IfNotPresent"
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1001
+              command:
+                - /scripts/setup.sh
+              resources:
+                limits: {}
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+              env:
+                - name: BITNAMI_DEBUG
+                  value: "false"
+                - name: ZOO_DATA_LOG_DIR
+                  value: ""
+                - name: ZOO_PORT_NUMBER
+                  value: "2181"
+                - name: ZOO_TICK_TIME
+                  value: "2000"
+                - name: ZOO_INIT_LIMIT
+                  value: "10"
+                - name: ZOO_SYNC_LIMIT
+                  value: "5"
+                - name: ZOO_PRE_ALLOC_SIZE
+                  value: "65536"
+                - name: ZOO_SNAPCOUNT
+                  value: "100000"
+                - name: ZOO_MAX_CLIENT_CNXNS
+                  value: "60"
+                - name: ZOO_4LW_COMMANDS_WHITELIST
+                  value: "srvr, mntr, ruok"
+                - name: ZOO_LISTEN_ALLIPS_ENABLED
+                  value: "no"
+                - name: ZOO_AUTOPURGE_INTERVAL
+                  value: "0"
+                - name: ZOO_AUTOPURGE_RETAIN_COUNT
+                  value: "3"
+                - name: ZOO_MAX_SESSION_TIMEOUT
+                  value: "40000"
+                - name: ZOO_SERVERS
+                  value: ai-kafka-zookeeper-0.ai-kafka-zookeeper-headless.kafka.svc.cluster.local:2888:3888::1 
+                - name: ZOO_ENABLE_AUTH
+                  value: "no"
+                - name: ZOO_HEAP_SIZE
+                  value: "1024"
+                - name: ZOO_LOG_LEVEL
+                  value: "ERROR"
+                - name: ALLOW_ANONYMOUS_LOGIN
+                  value: "yes"
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.name
+              ports:
+                - name: client
+                  containerPort: 2181
+                - name: follower
+                  containerPort: 2888
+                - name: election
+                  containerPort: 3888
+              livenessProbe:
+                failureThreshold: 6
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 5
+                exec:
+                  command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
+              readinessProbe:
+                failureThreshold: 6
+                initialDelaySeconds: 5
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 5
+                exec:
+                  command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts/setup.sh
+                  subPath: setup.sh
+                - name: data
+                  mountPath: /bitnami/zookeeper
+          volumes:
+            - name: scripts
+              configMap:
+                name: ai-kafka-zookeeper-scripts
+                defaultMode: 0755
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+            annotations:
+          spec:
+            accessModes:
+              - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: "8Gi"
 - op: add
   path: /objects/0
   value:
@@ -112,20 +375,19 @@
                     topologyKey: kubernetes.io/hostname
                   weight: 1
             nodeAffinity:
+          serviceAccountName: ai-kafka
           containers:
             - name: kafka
               image: docker.io/bitnami/kafka:3.2.0-debian-10-r4
               imagePullPolicy: "IfNotPresent"
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1001
               command:
                 - /scripts/setup.sh
-              lifecycle:
-                postStart:
-                  exec:
-                    command:
-                      - /scripts/create_topic.sh
               env:
                 - name: BITNAMI_DEBUG
-                  value: "true"
+                  value: "false"
                 - name: MY_POD_IP
                   valueFrom:
                     fieldRef:
@@ -136,14 +398,16 @@
                       fieldPath: metadata.name
                 - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                   value: "ai-kafka-zookeeper"
-                - name: KAFKA_ENABLE_KRAFT
-                  value: "yes"
                 - name: KAFKA_INTER_BROKER_LISTENER_NAME
                   value: "PLAINTEXT"
                 - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
                   value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+                - name: KAFKA_CFG_SASL_ENABLED_MECHANISMS
+                  value: "PLAIN,SCRAM-SHA-256,SCRAM-SHA-512"
+                - name: KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL
+                  value: "PLAIN"
                 - name: KAFKA_CFG_LISTENERS
-                  value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+                  value: "CONTROLLER://:9093,PLAINTEXT://:9092"
                 - name: KAFKA_CFG_ADVERTISED_LISTENERS
                   value: "PLAINTEXT://$(MY_POD_NAME).ai-kafka-headless.${NAMESPACE}.svc.cluster.local:9092"
                 - name: ALLOW_PLAINTEXT_LISTENER
@@ -154,10 +418,6 @@
                   value: "/bitnami/kafka"
                 - name: KAFKA_LOG_DIR
                   value: "/opt/bitnami/kafka/logs"
-                - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
-                  value: CONTROLLER
-                - name: KAFKA_CFG_PROCESS_ROLES
-                  value: broker,controller
                 - name: KAFKA_CFG_DELETE_TOPIC_ENABLE
                   value: "false"
                 - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
@@ -235,14 +495,13 @@
                 limits: {}
                 requests: {}
               volumeMounts:
+                - name: data
+                  mountPath: /bitnami/kafka
                 - name: logs
                   mountPath: /opt/bitnami/kafka/logs
                 - name: scripts
                   mountPath: /scripts/setup.sh
                   subPath: setup.sh
-                - name: scripts
-                  mountPath: /scripts/create_topic.sh
-                  subPath: create_topic.sh
           volumes:
             - name: scripts
               configMap:
@@ -250,3 +509,12 @@
                 defaultMode: 0755
             - name: logs
               emptyDir: {}
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes:
+              - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: "8Gi"

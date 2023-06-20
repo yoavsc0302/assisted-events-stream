@@ -11,6 +11,10 @@ parameters:
 - name: IMAGE_TAG
   value: ""
   required: true
+- name: KAFKA_IMAGE_NAME
+  value: "quay.io/strimzi/kafka"
+- name: KAFKA_IMAGE_TAG
+  value: "0.27.1-kafka-2.8.1"
 - name: CPU_LIMIT
   value: "1"
 - name: CPU_REQUEST
@@ -21,6 +25,12 @@ parameters:
   value: "256Mi"
 - name: NAMESPACE
   value: assisted-events-streams
+- name: KAFKA_TOPIC_PARTITIONS
+  value: "1"
+- name: KAFKA_TOPIC_REPLICATION_FACTOR
+  value: "1"
+- name: KAFKA_TOPIC_RETENTION_MS
+  value: "2419200000"
 - name: KAFKA_EVENT_STREAM_TOPIC
   value: "events-stream-integration"
 - name: KAFKA_GROUP_ID
@@ -46,14 +56,81 @@ parameters:
 - name: OPENSEARCH_RESPONSE_TIMEOUT
   value: "90s"
 - name: OPENSEARCH_SSL_INSECURE_SKIP_VERIFY
-  value: "false"
+  value: "true"
 - name: KAFKA_CREDENTIALS_SECRETNAME
-  value: assisted-installer-event-stream
+  value: kafka-dummy-user
+- name: KAFKA_CREDENTIALS_USERNAME_KEY
+  value: username
+- name: KAFKA_CREDENTIALS_PASSWORD_KEY
+  value: password
 - name: KAFKA_SASL_MECHANISM
   value: "PLAIN"
 - name: LOG_LEVEL
   value: info
+- name: ZOOKEEPER_TLS
+  value: "false"
+- name: ZOOKEEPER_CONNECT_STRING_SECRET_KEY
+  value: zookeeper_connect_string
+- name: ZOOKEEPER_CONNECT_STRING_SECRET_NAME
+  value: kafka
+- name: BOOTSTRAP_BROKERS_SECRET_KEY
+  value: bootstrap_brokers
+- name: BOOTSTRAP_BROKERS_SECRET_NAME
+  value: kafka
+- name: ADMIN_USERNAME_SECRET_KEY
+  value: username
+- name: ADMIN_USERNAME_SECRET_NAME
+  value: kafka-admin-user
+- name: ADMIN_PASSWORD_SECRET_KEY
+  value: password
+- name: ADMIN_PASSWORD_SECRET_NAME
+  value: kafka-admin-user
+- name: READ_USERNAME_SECRET_KEY
+  value: username
+- name: READ_USERNAME_SECRET_NAME
+  value: kafka-read-user
+- name: WRITE_USERNAME_SECRET_KEY
+  value: username
+- name: WRITE_USERNAME_SECRET_NAME
+  value: kafka-write-user
+- name: BOOTSTRAP_BROKERS_SECRET_KEY
+  value: bootstrap_brokers
+- name: BOOTSTRAP_BROKERS_SECRET_NAME
+  value: kafka
 objects:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: enriched-event-projection-zookeeper-client-config
+  data:
+    zookeeper.config: |-
+      zookeeper.ssl.client.enable=true
+      zookeeper.ssl.protocol=TLSv1.2
+      zookeeper.clientCnxnSocket=org.apache.zookeeper.ClientCnxnSocketNetty
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: enriched-event-projection-kafka-setup
+  data:
+    setup_acls: |-
+      export ZOOKEEPER=$(echo ${ZOOKEEPER_CONNECT_STRING} | cut -d, -f1)
+      ZK_TLS=""
+      if [ "${ZOOKEEPER_TLS}" == "true" ]; then
+        ZK_TLS="--zk-tls-config-file /opt/zookeeper/zookeeper.config"
+      fi
+      # setup admin user
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${ADMIN_USERNAME}" ${ZK_TLS} --operation Create --cluster
+
+      # setup read user
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${READ_USERNAME}" --operation Read --group "${KAFKA_GROUP_ID}" --topic "${KAFKA_TOPIC}" ${ZK_TLS}
+      # setup write user
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${WRITE_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
+    setup_topics: |
+      echo "sasl.mechanism=SCRAM-SHA-512\
+      security.protocol=SASL_SSL\
+      sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="${ADMIN_USERNAME} password="${ADMIN_PASSWORD}"\; > /tmp/admin-scram.properties
+
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${KAFKA_TOPIC}" --create --if-not-exists --partitions ${KAFKA_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -68,6 +145,69 @@ objects:
         labels:
           app.kubernetes.io/name: enriched-event-projection
       spec:
+        volumes:
+        - name: scripts
+          configMap:
+            name: enriched-event-projection-kafka-setup
+            defaultMode: 0755
+        - name: zookeeper-config
+          configMap:
+            name: enriched-event-projection-zookeeper-client-config
+            defaultMode: 0744
+        initContainers:
+        - name: kafka-client
+          image: ${KAFKA_IMAGE_NAME}:${KAFKA_IMAGE_TAG}
+          volumeMounts:
+          - name: scripts
+            mountPath: /opt/scripts
+          - name: zookeeper-config
+            mountPath: /opt/zookeeper/zookeeper.config
+            subPath: zookeeper.config
+          env:
+          - name: KAFKA_TOPIC
+            value: ${KAFKA_EVENT_STREAM_TOPIC}
+          - name: KAFKA_TOPIC_PARTITIONS
+            value: "${KAFKA_TOPIC_PARTITIONS}"
+          - name: KAFKA_TOPIC_REPLICATION_FACTOR
+            value: "${KAFKA_TOPIC_REPLICATION_FACTOR}"
+          - name: KAFKA_TOPIC_RETENTION_MS
+            value: "2419200000"
+          - name: ADMIN_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: ${ADMIN_USERNAME_SECRET_KEY}
+                name: ${ADMIN_USERNAME_SECRET_NAME}
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: ${ADMIN_PASSWORD_SECRET_KEY}
+                name: ${ADMIN_PASSWORD_SECRET_NAME}
+          - name: READ_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: ${READ_USERNAME_SECRET_KEY}
+                name: ${READ_USERNAME_SECRET_NAME}
+          - name: WRITE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: ${WRITE_USERNAME_SECRET_KEY}
+                name: ${WRITE_USERNAME_SECRET_NAME}
+          - name: ZOOKEEPER_TLS
+            value: "${ZOOKEEPER_TLS}"
+          - name: ZOOKEEPER_CONNECT_STRING
+            valueFrom:
+              secretKeyRef:
+                key: ${ZOOKEEPER_CONNECT_STRING_SECRET_KEY}
+                name: ${ZOOKEEPER_CONNECT_STRING_SECRET_NAME}
+          - name: BOOTSTRAP_SERVERS
+            valueFrom:
+              secretKeyRef:
+                key: ${BOOTSTRAP_BROKERS_SECRET_KEY}
+                name: ${BOOTSTRAP_BROKERS_SECRET_NAME}
+          command:
+          - bash
+          - -c
+          - "/opt/scripts/setup_acls && /opt/scripts/setup_topics"
         containers:
         - name: projection
           image: ${IMAGE_NAME}:${IMAGE_TAG}
@@ -105,18 +245,18 @@ objects:
           - name: KAFKA_BOOTSTRAP_SERVER
             valueFrom:
               secretKeyRef:
-                name: ${KAFKA_CREDENTIALS_SECRETNAME}
-                key: bootstrap_server_host
+                name: ${BOOTSTRAP_BROKERS_SECRET_NAME}
+                key: ${BOOTSTRAP_BROKERS_SECRET_KEY}
           - name: KAFKA_CLIENT_ID
             valueFrom:
               secretKeyRef:
                 name: ${KAFKA_CREDENTIALS_SECRETNAME}
-                key: client_id
+                key: ${KAFKA_CREDENTIALS_USERNAME_KEY}
           - name: KAFKA_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
                 name: ${KAFKA_CREDENTIALS_SECRETNAME}
-                key: client_secret
+                key: ${KAFKA_CREDENTIALS_PASSWORD_KEY}
           - name: REDIS_ADDRESS
             value: ${REDIS_ADDRESS}
           - name: REDIS_PASSWORD
