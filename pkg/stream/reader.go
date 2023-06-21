@@ -61,6 +61,12 @@ func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*Kafk
 		return nil, err
 	}
 	brokers := strings.Split(envConfig.BootstrapServer, ",")
+	logger.WithFields(logrus.Fields{
+		"bootstrap_server": envConfig.BootstrapServer,
+		"topic":            envConfig.Topic,
+		"group_id":         envConfig.GroupID,
+	}).Printf("connecting to kafka")
+
 	config := kafka.ReaderConfig{
 		Brokers:        brokers,
 		Topic:          envConfig.Topic,
@@ -79,6 +85,10 @@ func NewKafkaReader(logger *logrus.Logger, ackChannel chan kafka.Message) (*Kafk
 			TLS:           &tls.Config{},
 		}
 		config.Dialer = dialer
+		logger.WithFields(logrus.Fields{
+			"mechanism": mechanism.Name(),
+			"user":      envConfig.ClientID,
+		}).Printf("using TLS connection")
 	}
 	kafkaReader := kafka.NewReader(config)
 	return &KafkaReader{
@@ -96,12 +106,6 @@ func (r *KafkaReader) Close(ctx context.Context) {
 }
 
 func (r *KafkaReader) Consume(ctx context.Context, processMessageFn func(ctx context.Context, msg *kafka.Message) error) error {
-	r.logger.WithFields(logrus.Fields{
-		"bootstrap_server": r.config.BootstrapServer,
-		"topic":            r.config.Topic,
-		"group_id":         r.config.GroupID,
-	}).Printf("Connecting to kafka")
-
 	go r.listenForCommit(ctx)
 	for {
 		select {
