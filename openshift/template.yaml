@@ -658,7 +658,3 @@ parameters:
   value: username
 - name: WRITE_USERNAME_SECRET_NAME
   value: kafka-write-user
-- name: BOOTSTRAP_BROKERS_SECRET_KEY
-  value: bootstrap_brokers
-- name: BOOTSTRAP_BROKERS_SECRET_NAME
-  value: kafka
