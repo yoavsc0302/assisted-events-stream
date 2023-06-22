@@ -31,6 +31,8 @@ parameters:
   value: "2048Mi"
 - name: INIT_KAFKA_MEMORY_REQUEST
   value: "1024Mi"
+- name: KAFKA_HEAP_OPTS
+  value: "-Xms512m -Xmx1g"
 - name: NAMESPACE
   value: assisted-events-streams
 - name: KAFKA_TOPIC_PARTITIONS
@@ -175,6 +177,8 @@ objects:
               cpu: ${INIT_KAFKA_CPU_REQUEST}
               memory: ${INIT_KAFKA_MEMORY_REQUEST}
           env:
+          - name: KAFKA_HEAP_OPTS
+            value: "${KAFkA_HEAP_OPTS}"
           - name: KAFKA_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
           - name: KAFKA_TOPIC_PARTITIONS

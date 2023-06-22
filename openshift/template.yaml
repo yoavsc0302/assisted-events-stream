@@ -499,6 +499,8 @@ objects:
           - -c
           - /opt/scripts/setup_acls && /opt/scripts/setup_topics
           env:
+          - name: KAFKA_HEAP_OPTS
+            value: ${KAFkA_HEAP_OPTS}
           - name: KAFKA_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
           - name: KAFKA_TOPIC_PARTITIONS
@@ -603,6 +605,8 @@ parameters:
   value: 2048Mi
 - name: INIT_KAFKA_MEMORY_REQUEST
   value: 1024Mi
+- name: KAFKA_HEAP_OPTS
+  value: -Xms512m -Xmx1g
 - name: NAMESPACE
   value: assisted-events-streams
 - name: KAFKA_TOPIC_PARTITIONS
