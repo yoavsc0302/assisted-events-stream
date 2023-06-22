@@ -136,7 +136,7 @@ objects:
       security.protocol=SASL_SSL
       sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required \\
            username=\"${ADMIN_USERNAME}\" \\
-           password=\"${ADMIN_PASSWORD}\""; > /tmp/admin-scram.properties
+           password=\"${ADMIN_PASSWORD}\";" > /tmp/admin-scram.properties
 
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${KAFKA_TOPIC}" --create --if-not-exists --partitions ${KAFKA_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
 - apiVersion: apps/v1
