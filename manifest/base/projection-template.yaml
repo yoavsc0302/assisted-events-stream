@@ -23,6 +23,14 @@ parameters:
   value: "512Mi"
 - name: MEMORY_REQUEST
   value: "256Mi"
+- name: INIT_KAFKA_CPU_LIMIT
+  value: "1"
+- name: INIT_KAFKA_CPU_REQUEST
+  value: "10m"
+- name: INIT_KAFKA_MEMORY_LIMIT
+  value: "2048Mi"
+- name: INIT_KAFKA_MEMORY_REQUEST
+  value: "1024Mi"
 - name: NAMESPACE
   value: assisted-events-streams
 - name: KAFKA_TOPIC_PARTITIONS
@@ -159,6 +167,13 @@ objects:
           - name: zookeeper-config
             mountPath: /opt/zookeeper/zookeeper.config
             subPath: zookeeper.config
+          resources:
+            limits:
+              cpu: ${INIT_KAFKA_CPU_LIMIT}
+              memory: ${INIT_KAFKA_MEMORY_LIMIT}
+            requests:
+              cpu: ${INIT_KAFKA_CPU_REQUEST}
+              memory: ${INIT_KAFKA_MEMORY_REQUEST}
           env:
           - name: KAFKA_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
