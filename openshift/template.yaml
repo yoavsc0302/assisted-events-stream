@@ -541,6 +541,13 @@ objects:
                 name: ${BOOTSTRAP_BROKERS_SECRET_NAME}
           image: ${KAFKA_IMAGE_NAME}:${KAFKA_IMAGE_TAG}
           name: kafka-client
+          resources:
+            limits:
+              cpu: ${INIT_KAFKA_CPU_LIMIT}
+              memory: ${INIT_KAFKA_MEMORY_LIMIT}
+            requests:
+              cpu: ${INIT_KAFKA_CPU_REQUEST}
+              memory: ${INIT_KAFKA_MEMORY_REQUEST}
           volumeMounts:
           - mountPath: /opt/scripts
             name: scripts
@@ -588,6 +595,14 @@ parameters:
   value: 512Mi
 - name: MEMORY_REQUEST
   value: 256Mi
+- name: INIT_KAFKA_CPU_LIMIT
+  value: "1"
+- name: INIT_KAFKA_CPU_REQUEST
+  value: 10m
+- name: INIT_KAFKA_MEMORY_LIMIT
+  value: 2048Mi
+- name: INIT_KAFKA_MEMORY_REQUEST
+  value: 1024Mi
 - name: NAMESPACE
   value: assisted-events-streams
 - name: KAFKA_TOPIC_PARTITIONS
