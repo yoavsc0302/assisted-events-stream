@@ -500,7 +500,7 @@ objects:
           - /opt/scripts/setup_acls && /opt/scripts/setup_topics
           env:
           - name: KAFKA_HEAP_OPTS
-            value: ${KAFkA_HEAP_OPTS}
+            value: ${KAFKA_HEAP_OPTS}
           - name: KAFKA_TOPIC
             value: ${KAFKA_EVENT_STREAM_TOPIC}
           - name: KAFKA_TOPIC_PARTITIONS
