@@ -31,15 +31,17 @@ type EnrichedEventsProjection struct {
 	eventEnricher           EventEnricherInterface
 	snapshotRepository      redis_repo.SnapshotRepositoryInterface
 	enrichedEventRepository opensearch_repo.EnrichedEventRepositoryInterface
+	ackChannel              chan kafka.Message
 }
 
-func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface) *EnrichedEventsProjection {
+func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface, ackChannel chan kafka.Message) *EnrichedEventsProjection {
 	eventEnricher := process.NewEventEnricher(logger)
 	return &EnrichedEventsProjection{
 		logger:                  logger,
 		eventEnricher:           eventEnricher,
 		snapshotRepository:      snapshotRepo,
 		enrichedEventRepository: enrichedEventRepo,
+		ackChannel:              ackChannel,
 	}
 }
 
@@ -54,6 +56,8 @@ func (p *EnrichedEventsProjection) ProcessMessage(ctx context.Context, msg *kafk
 		p.logger.WithError(err).WithFields(logrus.Fields{
 			"message": msg,
 		}).Error("could not get event from message")
+		// acknowledge malformed message
+		p.ackMsg(msg)
 		return nil
 	}
 	return p.ProcessEvent(ctx, event, msg)
@@ -76,11 +80,19 @@ func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *type
 	default:
 		return fmt.Errorf("Unknown event name: %s (%s)", event.Name, event.Payload)
 	}
+	if event.Name != ClusterEvent {
+		p.ackMsg(msg)
+	}
 	if _, ok := err.(*process.MalformedEventError); ok {
 		p.logger.WithError(err).Warn("malformed event discarded")
+		p.ackMsg(msg)
 		return nil
 	}
 	return err
+}
+
+func (p *EnrichedEventsProjection) ackMsg(msg *kafka.Message) {
+	p.ackChannel <- *msg
 }
 
 func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, event *types.Event, msg *kafka.Message) error {
