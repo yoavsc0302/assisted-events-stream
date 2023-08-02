@@ -28,6 +28,7 @@ var _ = Describe("Process message", func() {
 		mockHosts             []map[string]interface{}
 		mockInfraEnvs         []map[string]interface{}
 		mockEnrichedEvent     *types.EnrichedEvent
+		ackChannel            chan kafka.Message
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
@@ -36,12 +37,14 @@ var _ = Describe("Process message", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		mockSnapshotRepo = redis_repo.NewMockSnapshotRepositoryInterface(ctrl)
 		mockEnrichedEventRepo = opensearch_repo.NewMockEnrichedEventRepositoryInterface(ctrl)
+		ackChannel = make(chan kafka.Message, 100)
 		mockEnricher = NewMockEventEnricherInterface(ctrl)
 		projection = &EnrichedEventsProjection{
 			logger:                  logger,
 			eventEnricher:           mockEnricher,
 			snapshotRepository:      mockSnapshotRepo,
 			enrichedEventRepository: mockEnrichedEventRepo,
+			ackChannel:              ackChannel,
 		}
 
 		mockCluster = getMockCluster()
@@ -49,10 +52,15 @@ var _ = Describe("Process message", func() {
 		mockInfraEnvs = getMockInfraEnvs()
 		mockEnrichedEvent = getMockEnrichedEvent()
 	})
+	AfterEach(func() {
+		close(ackChannel)
+	})
 	When("Processing an invalid message", func() {
 		It("should not return error", func() {
 			msg := getKafkaMessage("not json")
 			err := projection.ProcessMessage(ctx, msg)
+			ackedMsg := <-ackChannel
+			Expect(ackedMsg).To(Equal(*msg))
 			Expect(err).To(BeNil())
 		})
 	})
@@ -83,9 +91,11 @@ var _ = Describe("Process message", func() {
 			mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			mockEnrichedEventRepo.EXPECT().Store(ctx, gomock.Any(), msg).Times(0)
-
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
+
+			ackedMsg := <-ackChannel
+			Expect(ackedMsg).To(Equal(*msg))
 		})
 	})
 
@@ -103,6 +113,9 @@ var _ = Describe("Process message", func() {
 
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
+
+			ackedMsg := <-ackChannel
+			Expect(ackedMsg).To(Equal(*msg))
 		})
 	})
 
@@ -120,6 +133,9 @@ var _ = Describe("Process message", func() {
 
 			err := projection.ProcessMessage(ctx, msg)
 			Expect(err).To(BeNil())
+
+			ackedMsg := <-ackChannel
+			Expect(ackedMsg).To(Equal(*msg))
 		})
 	})
 

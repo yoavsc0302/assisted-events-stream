@@ -16,5 +16,6 @@ func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logg
 		logger,
 		snapshotRepository,
 		enrichedEventRepository,
+		ackChannel,
 	)
 }
