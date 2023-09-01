@@ -8,6 +8,7 @@ components:
   - ../../components/opensearch
   - ../../components/namespace
   - ../../components/redis
+  - ../../components/opensearch-curator
 
 patchesJson6902:
 - target:

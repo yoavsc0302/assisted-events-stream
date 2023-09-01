@@ -3,6 +3,112 @@ kind: Template
 metadata:
   name: assisted-events-stream-projection
 objects:
+- apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    name: assisted-curator-data-retention
+  spec:
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            containers:
+            - args:
+              - --config
+              - /etc/curator/config/configuration.yaml
+              - /etc/curator/config/actions.yaml
+              - --dry-run
+              command:
+              - curator
+              env:
+              - name: LOGLEVEL
+                value: ${OPENSEARCH_CURATOR_LOGLEVEL}
+              - name: OPENSEARCH_HOST
+                valueFrom:
+                  secretKeyRef:
+                    key: ${OPENSEARCH_ENDPOINT_SECRET_KEY}
+                    name: ${OPENSEARCH_ENDPOINT_SECRET_NAME}
+              - name: OPENSEARCH_USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    key: ${OPENSEARCH_USER_SECRET_KEY}
+                    name: ${OPENSEARCH_USER_SECRET_NAME}
+              - name: OPENSEARCH_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
+                    name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
+              image: ${OPENSEARCH_CURATOR_IMAGE_NAME}:${OPENSEARCH_CURATOR_IMAGE_TAG}
+              imagePullPolicy: ${OPENSEARCH_CURATOR_IMAGE_PULL_POLICY}
+              name: opensearch-curator
+              resources:
+                limits:
+                  cpu: ${OPENSEARCH_CURATOR_CPU_LIMIT}
+                  memory: ${OPENSEARCH_CURATOR_MEMORY_LIMIT}
+                requests:
+                  cpu: ${OPENSEARCH_CURATOR_CPU_REQUEST}
+                  memory: ${OPENSEARCH_CURATOR_MEMORY_REQUEST}
+              volumeMounts:
+              - mountPath: /etc/curator/config/
+                name: config
+            restartPolicy: OnFailure
+            volumes:
+            - configMap:
+                name: opensearch-curator-config
+              name: config
+        ttlSecondsAfterFinished: 600
+    schedule: 0 11 * * 2
+    suspend: false
+- apiVersion: v1
+  data:
+    actions.yaml: |-
+      actions:
+        1:
+          action: delete_indices
+          description: >-
+            Delete data from indices older than 18 months
+          options:
+            continue_if_exception: False
+          filters:
+          - filtertype: pattern
+            kind: regex
+            value: '^(assisted-service-events|assisted-installer-events).*'
+          - filtertype: age
+            source: creation_date
+            direction: older
+            unit: months
+            unit_count: 18
+        2:
+          action: forcemerge
+          description: >-
+            Perform a forceMerge on non-hot indices (older than 32 days)
+          options:
+            max_num_segments: 2
+            timeout_override: 21600
+          filters:
+          - filtertype: pattern
+            kind: regex
+            value: '^(assisted-service-events|assisted-installer-events).*'
+          - filtertype: age
+            source: creation_date
+            direction: older
+            unit: days
+            unit_count: 32
+    configuration.yaml: |-
+      client:
+        username: ${OPENSEARCH_USERNAME}
+        password: ${OPENSEARCH_PASSWORD}
+        timeout: 30
+        hosts:
+          - ${OPENSEARCH_HOST}
+        port: 9200
+        ssl_no_validate: True
+        use_ssl: True
+      logging:
+        loglevel: ${LOGLEVEL}
+  kind: ConfigMap
+  metadata:
+    name: opensearch-curator-config
 - apiVersion: apps/v1
   kind: StatefulSet
   metadata:
@@ -397,9 +503,6 @@ objects:
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${READ_USERNAME}" --operation Read --group "${KAFKA_GROUP_ID}" --topic "${KAFKA_TOPIC}" ${ZK_TLS}
       # setup write user
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${WRITE_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
-
-      # setup MirrorMaker user
-      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation Read --operation Write --topic "${MIRRORMAKER_TOPIC}" ${ZK_TLS}
     setup_topics: |
       echo "sasl.mechanism=SCRAM-SHA-512
       security.protocol=SASL_SSL
@@ -408,7 +511,6 @@ objects:
            password=\"${ADMIN_PASSWORD}\";" > /tmp/admin-scram.properties
 
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${KAFKA_TOPIC}" --create --if-not-exists --partitions ${KAFKA_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${MIRRORMAKER_TOPIC}" --create --if-not-exists --partitions ${MIRRORMAKER_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
   kind: ConfigMap
   metadata:
     name: enriched-event-projection-kafka-setup
@@ -477,18 +579,18 @@ objects:
           - name: OPENSEARCH_ADDRESS
             valueFrom:
               secretKeyRef:
-                key: endpoint
-                name: ${OPENSEARCH_ENDPOINT_SECRETNAME}
+                key: ${OPENSEARCH_ENDPOINT_SECRET_KEY}
+                name: ${OPENSEARCH_ENDPOINT_SECRET_NAME}
           - name: OPENSEARCH_USERNAME
             valueFrom:
               secretKeyRef:
-                key: master_user_name
-                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}
+                key: ${OPENSEARCH_USER_SECRET_KEY}
+                name: ${OPENSEARCH_USER_SECRET_NAME}
           - name: OPENSEARCH_PASSWORD
             valueFrom:
               secretKeyRef:
-                key: master_user_password
-                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}
+                key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
+                name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
           image: ${IMAGE_NAME}:${IMAGE_TAG}
           imagePullPolicy: ${IMAGE_PULL_POLICY}
           name: projection
@@ -515,14 +617,6 @@ objects:
             value: ${KAFKA_TOPIC_REPLICATION_FACTOR}
           - name: KAFKA_TOPIC_RETENTION_MS
             value: "2419200000"
-          - name: MIRRORMAKER_TOPIC
-            value: ${MIRRORMAKER_TOPIC}
-          - name: MIRRORMAKER_TOPIC_PARTITIONS
-            value: ${MIRRORMAKER_TOPIC_PARTITIONS}
-          - name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
-            value: ${MIRRORMAKER_TOPIC_REPLICATION_FACTOR}
-          - name: MIRRORMAKER_TOPIC_RETENTION_MS
-            value: "${MIRRORMAKER_TOPIC_RETENTION_MS}"
           - name: ADMIN_USERNAME
             valueFrom:
               secretKeyRef:
@@ -543,11 +637,6 @@ objects:
               secretKeyRef:
                 key: ${WRITE_USERNAME_SECRET_KEY}
                 name: ${WRITE_USERNAME_SECRET_NAME}
-          - name: MIRRORMAKER_USERNAME
-            valueFrom:
-              secretKeyRef:
-                key: ${MIRRORMAKER_USERNAME_SECRET_KEY}
-                name: ${MIRRORMAKER_USERNAME_SECRET_NAME}
           - name: ZOOKEEPER_TLS
             value: ${ZOOKEEPER_TLS}
           - name: ZOOKEEPER_CONNECT_STRING
@@ -642,10 +731,18 @@ parameters:
   value: assisted-events-streams-redis:6379
 - name: REDIS_CREDENTIALS_SECRETNAME
   value: redis-credentials
-- name: OPENSEARCH_CREDENTIALS_SECRETNAME
+- name: OPENSEARCH_USER_SECRET_NAME
   value: elastic-master-credentials
-- name: OPENSEARCH_ENDPOINT_SECRETNAME
+- name: OPENSEARCH_USER_SECRET_KEY
+  value: master_user_name
+- name: OPENSEARCH_PASSWORD_SECRET_NAME
+  value: elastic-master-credentials
+- name: OPENSEARCH_PASSWORD_SECRET_KEY
+  value: master_user_password
+- name: OPENSEARCH_ENDPOINT_SECRET_NAME
   value: assisted-installer-elasticsearch
+- name: OPENSEARCH_ENDPOINT_SECRET_KEY
+  value: endpoint
 - name: OPENSEARCH_INDEX_PREFIX
   value: assisted-installer-events-v1-
 - name: OPENSEARCH_CONFIG_INDEX
@@ -660,6 +757,22 @@ parameters:
   value: 90s
 - name: OPENSEARCH_SSL_INSECURE_SKIP_VERIFY
   value: "true"
+- name: OPENSEARCH_CURATOR_IMAGE_NAME
+  value: quay.io/edge-infrastructure/opensearch-curator
+- name: OPENSEARCH_CURATOR_IMAGE_TAG
+  value: 0.0.12
+- name: OPENSEARCH_CURATOR_IMAGE_PULL_POLICY
+  value: Always
+- name: OPENSEARCH_CURATOR_CPU_LIMIT
+  value: "1"
+- name: OPENSEARCH_CURATOR_CPU_REQUEST
+  value: 10m
+- name: OPENSEARCH_CURATOR_MEMORY_LIMIT
+  value: 2048Mi
+- name: OPENSEARCH_CURATOR_MEMORY_REQUEST
+  value: 1024Mi
+- name: OPENSEARCH_CURATOR_LOGLEVEL
+  value: INFO
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: kafka-dummy-user
 - name: KAFKA_CREDENTIALS_USERNAME_KEY
@@ -696,15 +809,3 @@ parameters:
   value: username
 - name: WRITE_USERNAME_SECRET_NAME
   value: kafka-write-user
-- name: MIRRORMAKER_USERNAME_SECRET_NAME
-  value: mirrormaker-user
-- name: MIRRORMAKER_USERNAME_SECRET_KEY
-  value: username
-- name: MIRRORMAKER_TOPIC
-  value: "platform.upload.announce"
-- name: MIRRORMAKER_TOPIC_PARTITIONS
-  value: "6"
-- name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
-  value: "3"
-- name: MIRRORAMKER_TOPIC_RETENTION_MS
-  value: "2419200000"

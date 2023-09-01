@@ -49,10 +49,18 @@ parameters:
   value: "assisted-events-streams-redis:6379"
 - name: REDIS_CREDENTIALS_SECRETNAME
   value: redis-credentials
-- name: OPENSEARCH_CREDENTIALS_SECRETNAME
+- name: OPENSEARCH_USER_SECRET_NAME
   value: elastic-master-credentials
-- name: OPENSEARCH_ENDPOINT_SECRETNAME
+- name: OPENSEARCH_USER_SECRET_KEY
+  value: master_user_name
+- name: OPENSEARCH_PASSWORD_SECRET_NAME
+  value: elastic-master-credentials
+- name: OPENSEARCH_PASSWORD_SECRET_KEY
+  value: master_user_password
+- name: OPENSEARCH_ENDPOINT_SECRET_NAME
   value: assisted-installer-elasticsearch
+- name: OPENSEARCH_ENDPOINT_SECRET_KEY
+  value: endpoint
 - name: OPENSEARCH_INDEX_PREFIX
   value: assisted-installer-events-v1-
 - name: OPENSEARCH_CONFIG_INDEX
@@ -67,6 +75,22 @@ parameters:
   value: "90s"
 - name: OPENSEARCH_SSL_INSECURE_SKIP_VERIFY
   value: "true"
+- name: OPENSEARCH_CURATOR_IMAGE_NAME
+  value: "quay.io/edge-infrastructure/opensearch-curator"
+- name: OPENSEARCH_CURATOR_IMAGE_TAG
+  value: "0.0.12"
+- name: OPENSEARCH_CURATOR_IMAGE_PULL_POLICY
+  value: Always
+- name: OPENSEARCH_CURATOR_CPU_LIMIT
+  value: "1"
+- name: OPENSEARCH_CURATOR_CPU_REQUEST
+  value: "10m"
+- name: OPENSEARCH_CURATOR_MEMORY_LIMIT
+  value: "2048Mi"
+- name: OPENSEARCH_CURATOR_MEMORY_REQUEST
+  value: "1024Mi"
+- name: OPENSEARCH_CURATOR_LOGLEVEL
+  value: "INFO"
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: kafka-dummy-user
 - name: KAFKA_CREDENTIALS_USERNAME_KEY
@@ -286,15 +310,15 @@ objects:
           - name: OPENSEARCH_ADDRESS
             valueFrom:
               secretKeyRef:
-                key: endpoint
-                name: ${OPENSEARCH_ENDPOINT_SECRETNAME}
+                key: ${OPENSEARCH_ENDPOINT_SECRET_KEY}
+                name: ${OPENSEARCH_ENDPOINT_SECRET_NAME}
           - name: OPENSEARCH_USERNAME
             valueFrom:
               secretKeyRef:
-                key: master_user_name
-                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}
+                key: ${OPENSEARCH_USER_SECRET_KEY}
+                name: ${OPENSEARCH_USER_SECRET_NAME}
           - name: OPENSEARCH_PASSWORD
             valueFrom:
               secretKeyRef:
-                key: master_user_password
-                name: ${OPENSEARCH_CREDENTIALS_SECRETNAME}
+                key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
+                name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
