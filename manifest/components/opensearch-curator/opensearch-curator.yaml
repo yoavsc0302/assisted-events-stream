@@ -1,0 +1,112 @@
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: opensearch-curator-config
+    data:
+      configuration.yaml: |-
+        client:
+          username: ${OPENSEARCH_USERNAME}
+          password: ${OPENSEARCH_PASSWORD}
+          timeout: 30
+          hosts:
+            - ${OPENSEARCH_HOST}
+          port: 9200
+          ssl_no_validate: True
+          use_ssl: True
+        logging:
+          loglevel: ${LOGLEVEL}
+      actions.yaml: |-
+        actions:
+          1:
+            action: delete_indices
+            description: >-
+              Delete data from indices older than 18 months
+            options:
+              continue_if_exception: False
+            filters:
+            - filtertype: pattern
+              kind: regex
+              value: '^(assisted-service-events|assisted-installer-events).*'
+            - filtertype: age
+              source: creation_date
+              direction: older
+              unit: months
+              unit_count: 18
+          2:
+            action: forcemerge
+            description: >-
+              Perform a forceMerge on non-hot indices (older than 32 days)
+            options:
+              max_num_segments: 2
+              timeout_override: 21600
+            filters:
+            - filtertype: pattern
+              kind: regex
+              value: '^(assisted-service-events|assisted-installer-events).*'
+            - filtertype: age
+              source: creation_date
+              direction: older
+              unit: days
+              unit_count: 32
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: assisted-curator-data-retention
+    spec:
+      suspend: false
+      schedule: "0 11 * * 2"
+      jobTemplate:
+        spec:
+          ttlSecondsAfterFinished: 600
+          template:
+            spec:
+              volumes:
+              - name: config
+                configMap:
+                  name: opensearch-curator-config
+              containers:
+              - name: opensearch-curator
+                image: ${OPENSEARCH_CURATOR_IMAGE_NAME}:${OPENSEARCH_CURATOR_IMAGE_TAG}
+                imagePullPolicy: ${OPENSEARCH_CURATOR_IMAGE_PULL_POLICY}
+                resources:
+                  limits:
+                    memory: ${OPENSEARCH_CURATOR_MEMORY_LIMIT}
+                    cpu: ${OPENSEARCH_CURATOR_CPU_LIMIT}
+                  requests:
+                    memory: ${OPENSEARCH_CURATOR_MEMORY_REQUEST}
+                    cpu: ${OPENSEARCH_CURATOR_CPU_REQUEST}
+                command:
+                - curator
+                args:
+                  - --config
+                  - /etc/curator/config/configuration.yaml
+                  - /etc/curator/config/actions.yaml
+                  - --dry-run
+                volumeMounts:
+                - mountPath: /etc/curator/config/
+                  name: config
+                env:
+                - name: LOGLEVEL
+                  value: "${OPENSEARCH_CURATOR_LOGLEVEL}"
+                - name: OPENSEARCH_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      key: ${OPENSEARCH_ENDPOINT_SECRET_KEY}
+                      name: ${OPENSEARCH_ENDPOINT_SECRET_NAME}
+                - name: OPENSEARCH_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      key: ${OPENSEARCH_USER_SECRET_KEY}
+                      name: ${OPENSEARCH_USER_SECRET_NAME}
+                - name: OPENSEARCH_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
+                      name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
+              restartPolicy: OnFailure

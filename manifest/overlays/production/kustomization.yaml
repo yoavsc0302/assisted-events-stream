@@ -5,6 +5,7 @@ resources:
   - ../../base
 components:
   - ../../components/redis
+  - ../../components/opensearch-curator
 patchesJson6902:
 - target:
     group: template.openshift.io
