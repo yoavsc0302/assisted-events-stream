@@ -13,8 +13,8 @@
           timeout: 30
           hosts:
             - ${OPENSEARCH_HOST}
-          port: 9200
-          ssl_no_validate: True
+          port: ${OPENSEARCH_PORT}
+          ssl_no_validate: ${OPENSEARCH_CURATOR_SSL_NO_VALIDATE}
           use_ssl: True
         logging:
           loglevel: ${LOGLEVEL}
@@ -23,34 +23,34 @@
           1:
             action: delete_indices
             description: >-
-              Delete data from indices older than 18 months
+              Delete data from indices older than ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS} months
             options:
               continue_if_exception: False
             filters:
             - filtertype: pattern
               kind: regex
-              value: '^(assisted-service-events|assisted-installer-events).*'
+              value: ${OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN}
             - filtertype: age
               source: creation_date
               direction: older
               unit: months
-              unit_count: 18
+              unit_count: ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS}
           2:
             action: forcemerge
             description: >-
-              Perform a forceMerge on non-hot indices (older than 32 days)
+              Perform a forceMerge on non-hot indices (older than ${OPENSEARCH_CURATOR_COMPACT_DATA_AFTER_DAYS} days)
             options:
-              max_num_segments: 2
-              timeout_override: 21600
+              max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
+              timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
             filters:
             - filtertype: pattern
               kind: regex
-              value: '^(assisted-service-events|assisted-installer-events).*'
+              value: ${OPENSEARCH_CURATOR_FORCEMERGE_PATTERN}
             - filtertype: age
               source: creation_date
               direction: older
               unit: days
-              unit_count: 32
+              unit_count: ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS}
 - op: add
   path: /objects/0
   value:

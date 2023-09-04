@@ -91,6 +91,22 @@ parameters:
   value: "1024Mi"
 - name: OPENSEARCH_CURATOR_LOGLEVEL
   value: "INFO"
+- name: OPENSEARCH_CURATOR_SSL_NO_VALIDATE
+  value: "True"
+- name: OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS
+  value: "18"
+- name: OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN
+  value: '^(assisted-service-events|assisted-installer-events).*'
+- name: OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS
+  value: "32"
+- name: OPENSEARCH_CURATOR_FORCEMERGE_PATTERN
+  value: '^(assisted-service-events|assisted-installer-events).*'
+- name: OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS
+  value: "2"
+- name: OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS
+  value: "21600"
+- name: OPENSEARCH_PORT
+  value: "9200"
 - name: KAFKA_CREDENTIALS_SECRETNAME
   value: kafka-dummy-user
 - name: KAFKA_CREDENTIALS_USERNAME_KEY
