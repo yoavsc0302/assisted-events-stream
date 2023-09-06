@@ -100,6 +100,11 @@ func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, even
 	if err != nil {
 		return err
 	}
+	p.logger.WithFields(logrus.Fields{
+		"name":       event.Name,
+		"cluster_id": clusterID,
+	}).Debug("processing cluster event")
+
 	cluster, err := p.snapshotRepository.GetCluster(ctx, clusterID)
 	if err != nil {
 		p.logger.WithFields(logrus.Fields{
@@ -134,6 +139,10 @@ func (p *EnrichedEventsProjection) ProcessClusterState(ctx context.Context, even
 	if err != nil {
 		return err
 	}
+	p.logger.WithFields(logrus.Fields{
+		"name":       event.Name,
+		"cluster_id": clusterID,
+	}).Debug("processing cluster state")
 	return p.snapshotRepository.SetCluster(ctx, clusterID, event)
 }
 
@@ -146,6 +155,11 @@ func (p *EnrichedEventsProjection) ProcessHostState(ctx context.Context, event *
 	if err != nil {
 		return err
 	}
+	p.logger.WithFields(logrus.Fields{
+		"name":       event.Name,
+		"host_id":    hostID,
+		"cluster_id": clusterID,
+	}).Debug("processing host state")
 	return p.snapshotRepository.SetHost(ctx, clusterID, hostID, event)
 }
 
@@ -160,6 +174,11 @@ func (p *EnrichedEventsProjection) ProcessInfraEnvState(ctx context.Context, eve
 		return err
 	}
 
+	p.logger.WithFields(logrus.Fields{
+		"name":         event.Name,
+		"infra_env_id": infraEnvID,
+		"cluster_id":   clusterID,
+	}).Debug("processing infra-env state")
 	return p.snapshotRepository.SetInfraEnv(ctx, clusterID, infraEnvID, event)
 }
 
