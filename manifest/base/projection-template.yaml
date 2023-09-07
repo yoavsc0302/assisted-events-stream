@@ -143,6 +143,18 @@ parameters:
   value: username
 - name: WRITE_USERNAME_SECRET_NAME
   value: kafka-write-user
+- name: MIRRORMAKER_USERNAME_SECRET_NAME
+  value: mirrormaker-user
+- name: MIRRORMAKER_USERNAME_SECRET_KEY
+  value: username
+- name: MIRRORMAKER_TOPIC
+  value: "platform.upload.announce"
+- name: MIRRORMAKER_TOPIC_PARTITIONS
+  value: "6"
+- name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
+  value: "3"
+- name: MIRRORAMKER_TOPIC_RETENTION_MS
+  value: "2419200000"
 objects:
 - apiVersion: v1
   kind: ConfigMap
@@ -171,6 +183,9 @@ objects:
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${READ_USERNAME}" --operation Read --group "${KAFKA_GROUP_ID}" --topic "${KAFKA_TOPIC}" ${ZK_TLS}
       # setup write user
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${WRITE_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
+
+      # setup MirrorMaker user
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation Read --operation Write --topic "${MIRRORMAKER_TOPIC}" ${ZK_TLS}
     setup_topics: |
       echo "sasl.mechanism=SCRAM-SHA-512
       security.protocol=SASL_SSL
@@ -179,6 +194,7 @@ objects:
            password=\"${ADMIN_PASSWORD}\";" > /tmp/admin-scram.properties
 
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${KAFKA_TOPIC}" --create --if-not-exists --partitions ${KAFKA_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --command-config /tmp/admin-scram.properties --topic "${MIRRORMAKER_TOPIC}" --create --if-not-exists --partitions ${MIRRORMAKER_TOPIC_PARTITIONS} --replication-factor ${KAFKA_TOPIC_REPLICATION_FACTOR} --config retention.ms=${KAFKA_TOPIC_RETENTION_MS}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -229,6 +245,14 @@ objects:
             value: "${KAFKA_TOPIC_REPLICATION_FACTOR}"
           - name: KAFKA_TOPIC_RETENTION_MS
             value: "2419200000"
+          - name: MIRRORMAKER_TOPIC
+            value: ${MIRRORMAKER_TOPIC}
+          - name: MIRRORMAKER_TOPIC_PARTITIONS
+            value: ${MIRRORMAKER_TOPIC_PARTITIONS}
+          - name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
+            value: ${MIRRORMAKER_TOPIC_REPLICATION_FACTOR}
+          - name: MIRRORMAKER_TOPIC_RETENTION_MS
+            value: "${MIRRORMAKER_TOPIC_RETENTION_MS}"
           - name: ADMIN_USERNAME
             valueFrom:
               secretKeyRef:
@@ -249,6 +273,11 @@ objects:
               secretKeyRef:
                 key: ${WRITE_USERNAME_SECRET_KEY}
                 name: ${WRITE_USERNAME_SECRET_NAME}
+          - name: MIRRORMAKER_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: ${MIRRORMAKER_USERNAME_SECRET_KEY}
+                name: ${MIRRORMAKER_USERNAME_SECRET_NAME}
           - name: ZOOKEEPER_TLS
             value: "${ZOOKEEPER_TLS}"
           - name: ZOOKEEPER_CONNECT_STRING
