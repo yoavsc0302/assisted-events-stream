@@ -506,6 +506,8 @@ objects:
 
       # setup MirrorMaker user
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation Read --operation Write --topic "${MIRRORMAKER_TOPIC}" ${ZK_TLS}
+
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-offsets" ${ZK_TLS}
     setup_topics: |
       echo "sasl.mechanism=SCRAM-SHA-512
       security.protocol=SASL_SSL
