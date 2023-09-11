@@ -17,7 +17,6 @@ objects:
               - --config
               - /etc/curator/config/configuration.yaml
               - /etc/curator/config/actions.yaml
-              - --dry-run
               command:
               - curator
               env:
@@ -81,7 +80,7 @@ objects:
         2:
           action: forcemerge
           description: >-
-            Perform a forceMerge on non-hot indices (older than ${OPENSEARCH_CURATOR_COMPACT_DATA_AFTER_DAYS} days)
+            Perform a forceMerge on non-hot indices (older than ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS} days)
           options:
             max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
             timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
