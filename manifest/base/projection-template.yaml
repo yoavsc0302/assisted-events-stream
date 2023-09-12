@@ -149,6 +149,8 @@ parameters:
   value: username
 - name: MIRRORMAKER_TOPIC
   value: "platform.upload.announce"
+- name: MIRRORMAKER_GROUP
+  value: "mirrormaker2-cluster"
 - name: MIRRORMAKER_TOPIC_PARTITIONS
   value: "6"
 - name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
@@ -185,11 +187,11 @@ objects:
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${WRITE_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
 
       # setup MirrorMaker user
-      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation Read --operation Write --topic "${MIRRORMAKER_TOPIC}" ${ZK_TLS}
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "${MIRRORMAKER_TOPIC}" --group ${MIRRORMAKER_GROUP} ${ZK_TLS}
 
-      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-offsets" ${ZK_TLS}
-      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-status" ${ZK_TLS}
-      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-configs" ${ZK_TLS}
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-offsets" --group ${MIRRORMAKER_GROUP} ${ZK_TLS}
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-status" --group ${MIRRORMAKER_GROUP} ${ZK_TLS}
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "mirrormaker2-cluster-configs" --group ${MIRRORMAKER_GROUP} ${ZK_TLS}
     setup_topics: |
       echo "sasl.mechanism=SCRAM-SHA-512
       security.protocol=SASL_SSL
@@ -251,6 +253,8 @@ objects:
             value: "2419200000"
           - name: MIRRORMAKER_TOPIC
             value: ${MIRRORMAKER_TOPIC}
+          - name: MIRRORMAKER_GROUP
+            value: ${MIRRORMAKER_GROUP}
           - name: MIRRORMAKER_TOPIC_PARTITIONS
             value: ${MIRRORMAKER_TOPIC_PARTITIONS}
           - name: MIRRORMAKER_TOPIC_REPLICATION_FACTOR
