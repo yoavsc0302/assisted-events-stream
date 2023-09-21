@@ -33,12 +33,13 @@ type KafkaReader struct {
 }
 
 type KafkaConfig struct {
-	BootstrapServer string `envconfig:"KAFKA_BOOTSTRAP_SERVER" required:"true"`
-	ClientID        string `envconfig:"KAFKA_CLIENT_ID" default:""`
-	ClientSecret    string `envconfig:"KAFKA_CLIENT_SECRET" default:""`
-	SaslMechanism   string `envconfig:"KAFKA_SASL_MECHANISM" default:"PLAIN"`
-	Topic           string `envconfig:"KAFKA_EVENT_STREAM_TOPIC" required:"true"`
-	GroupID         string `envconfig:"KAFKA_GROUP_ID" required:"true"`
+	BootstrapServer  string `envconfig:"KAFKA_BOOTSTRAP_SERVER" required:"true"`
+	ClientID         string `envconfig:"KAFKA_CLIENT_ID" default:""`
+	ClientSecret     string `envconfig:"KAFKA_CLIENT_SECRET" default:""`
+	SaslMechanism    string `envconfig:"KAFKA_SASL_MECHANISM" default:"PLAIN"`
+	Topic            string `envconfig:"KAFKA_EVENT_STREAM_TOPIC" required:"true"`
+	GroupID          string `envconfig:"KAFKA_GROUP_ID" required:"true"`
+	DestinationTopic string `envconfig:"KAFKA_EVENT_STREAM_TOPIC_DESTINATION" required:"true"`
 }
 
 func getMechanism(envConfig *KafkaConfig) (sasl.Mechanism, error) {

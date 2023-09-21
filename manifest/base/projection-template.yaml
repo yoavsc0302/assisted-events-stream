@@ -157,6 +157,38 @@ parameters:
   value: "3"
 - name: MIRRORAMKER_TOPIC_RETENTION_MS
   value: "2419200000"
+- name: ONPREM_DOWNLOAD_DIRECTORY
+  value: "/tmp"
+- name: ONPREM_WORK_DIRECTORY
+  value: "/tmp"
+- name: ONPREM_TMPDIR
+  value: "/tmp"
+- name: ONPREM_CPU_LIMIT
+  value: "1"
+- name: ONPREM_CPU_REQUEST
+  value: "10m"
+- name: ONPREM_MEMORY_LIMIT
+  value: "512Mi"
+- name: ONPREM_MEMORY_REQUEST
+  value: "256Mi"
+- name: ONPREM_KAFKA_GROUP_ID
+  value: "onprem-hydrator-dev"
+- name: ONPREM_LOGLEVEL
+  value: "info"
+- name: ONPREM_REPLICAS_COUNT
+  value: "1"
+- name: ONPREM_KAFKA_CREDENTIALS_SECRETNAME
+  value: msk-onprem-user
+- name: ONPREM_KAFKA_CREDENTIALS_USERNAME_KEY
+  value: username
+- name: ONPREM_KAFKA_CREDENTIALS_PASSWORD_KEY
+  value: password
+- name: ONPREM_DOWNLOAD_CHANNEL_BUFFER_SIZE
+  value: "1000"
+- name: ONPREM_UNTAR_CHANNEL_BUFFER_SIZE
+  value: "1000"
+- name: ONPREM_EVENT_CHANNEL_BUFFER_SIZE
+  value: "1000"
 objects:
 - apiVersion: v1
   kind: ConfigMap
@@ -185,6 +217,11 @@ objects:
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${READ_USERNAME}" --operation Read --group "${KAFKA_GROUP_ID}" --topic "${KAFKA_TOPIC}" ${ZK_TLS}
       # setup write user
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${WRITE_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
+
+      # setup onprem user
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${ONPREM_USERNAME}" --operation Write --topic "${KAFKA_TOPIC}" ${ZK_TLS}
+
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${ONPREM_USERNAME}" --operation Read --group "${ONPREM_GROUP_ID}" --topic "${MIRRORMAKER_TOPIC}" ${ZK_TLS}
 
       # setup MirrorMaker user
       /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${MIRRORMAKER_USERNAME}" --operation ALL --topic "${MIRRORMAKER_TOPIC}" --group ${MIRRORMAKER_GROUP} ${ZK_TLS}
@@ -286,6 +323,13 @@ objects:
               secretKeyRef:
                 key: ${MIRRORMAKER_USERNAME_SECRET_KEY}
                 name: ${MIRRORMAKER_USERNAME_SECRET_NAME}
+          - name: ONPREM_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: ${ONPREM_KAFKA_CREDENTIALS_USERNAME_KEY}
+                name: ${ONPREM_KAFKA_CREDENTIALS_SECRETNAME}
+          - name: ONPREM_GROUP_ID
+            value: ${ONPREM_KAFKA_GROUP_ID}
           - name: ZOOKEEPER_TLS
             value: "${ZOOKEEPER_TLS}"
           - name: ZOOKEEPER_CONNECT_STRING
@@ -375,3 +419,78 @@ objects:
               secretKeyRef:
                 key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
                 name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: onprem-hydrator
+  spec:
+    replicas: ${{ONPREM_REPLICAS_COUNT}}
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: onprem-hydrator
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/name: onprem-hydrator
+      spec:
+        containers:
+        - command:
+          - /onprem
+          env:
+          - name: DOWNLOAD_CHANNEL_BUFFER_SIZE
+            value: ${ONPREM_DOWNLOAD_CHANNEL_BUFFER_SIZE}
+          - name: UNTAR_CHANNEL_BUFFER_SIZE
+            value: ${ONPREM_UNTAR_CHANNEL_BUFFER_SIZE}
+          - name: EVENT_CHANNEL_BUFFER_SIZE
+            value: ${ONPREM_EVENT_CHANNEL_BUFFER_SIZE}
+          - name: KAFKA_EVENT_STREAM_TOPIC
+            value: ${MIRRORMAKER_TOPIC}
+          - name: KAFKA_EVENT_STREAM_TOPIC_DESTINATION
+            value: ${KAFKA_EVENT_STREAM_TOPIC}
+          - name: LOG_LEVEL
+            value: ${ONPREM_LOGLEVEL}
+          - name: KAFKA_GROUP_ID
+            value: ${ONPREM_KAFKA_GROUP_ID}
+          - name: DOWNLOAD_DIRECTORY
+            value: ${ONPREM_DOWNLOAD_DIRECTORY}
+          - name: WORK_DIRECTORY
+            value: ${ONPREM_WORK_DIRECTORY}
+          - name: KAFKA_SASL_MECHANISM
+            value: SCRAM
+          - name: KAFKA_BOOTSTRAP_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: ${BOOTSTRAP_BROKERS_SECRET_NAME}
+                key: ${BOOTSTRAP_BROKERS_SECRET_KEY}
+          - name: KAFKA_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: ${ONPREM_KAFKA_CREDENTIALS_SECRETNAME}
+                key: ${ONPREM_KAFKA_CREDENTIALS_USERNAME_KEY}
+          - name: KAFKA_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: ${ONPREM_KAFKA_CREDENTIALS_SECRETNAME}
+                key: ${ONPREM_KAFKA_CREDENTIALS_PASSWORD_KEY}
+          image: ${IMAGE_NAME}:${IMAGE_TAG}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          name: onprem-hydrator
+          volumeMounts:
+          - mountPath: ${ONPREM_TMPDIR}
+            name: tmpdir
+          resources:
+            limits:
+              cpu: ${ONPREM_CPU_LIMIT}
+              memory: ${ONPREM_MEMORY_LIMIT}
+            requests:
+              cpu: ${ONPREM_CPU_REQUEST}
+              memory: ${ONPREM_MEMORY_REQUEST}
+        volumes:
+        - name: tmpdir
+          emptyDir: {}
