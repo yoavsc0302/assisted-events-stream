@@ -1,5 +1,10 @@
 package types
 
+type EventEnvelope struct {
+	Event Event
+	Key   []byte
+}
+
 type Event struct {
 	Name     string                 `json:"name"`
 	Payload  interface{}            `json:"payload"`
