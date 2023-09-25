@@ -50,8 +50,8 @@ func NewOnPremEventsHydrator(ctx context.Context, logger *logrus.Logger, ackChan
 	err := envconfig.Process("", channelsConfig)
 	if err != nil {
 		return nil
-
 	}
+
 	downloadChannel := make(chan DownloadUrlMessage, channelsConfig.DownloadChannelBufferSize)
 	untarChannel := make(chan FilenameMessage, channelsConfig.UntarChannelBufferSize)
 	doneChannel := make(chan struct{}, 1)

@@ -39,7 +39,7 @@ type KafkaConfig struct {
 	SaslMechanism    string `envconfig:"KAFKA_SASL_MECHANISM" default:"PLAIN"`
 	Topic            string `envconfig:"KAFKA_EVENT_STREAM_TOPIC" required:"true"`
 	GroupID          string `envconfig:"KAFKA_GROUP_ID" required:"true"`
-	DestinationTopic string `envconfig:"KAFKA_EVENT_STREAM_TOPIC_DESTINATION" required:"true"`
+	DestinationTopic string `envconfig:"KAFKA_EVENT_STREAM_TOPIC_DESTINATION" default:""`
 }
 
 func getMechanism(envConfig *KafkaConfig) (sasl.Mechanism, error) {
