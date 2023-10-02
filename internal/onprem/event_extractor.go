@@ -49,69 +49,66 @@ func NewEventExtractorFromEnv(logger *logrus.Logger, channelsConfig *ChannelsCon
 }
 
 func (e *EventExtractor) ExtractEvents(tarFilename string) (chan types.EventEnvelope, error) {
+	logger := e.logger.WithFields(logrus.Fields{
+		"tarFilename": tarFilename,
+	})
 	eventChannel := make(chan types.EventEnvelope, e.eventsBufferSize)
 	tmpdir, err := ioutil.TempDir("", ".untar-")
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
-			"err":  err,
-			"file": tarFilename,
+		logger.WithFields(logrus.Fields{
+			"err": err,
 		}).Error("failed to create tmpdir")
 		return eventChannel, err
 	}
 	defer os.RemoveAll(tmpdir)
-
-	e.logger.WithFields(logrus.Fields{
+	logger = logger.WithFields(logrus.Fields{
 		"tmpdir": tmpdir,
-		"file":   tarFilename,
-	}).Info("untarring file into tmpdir")
-	e.untarFile(tarFilename, tmpdir)
+	})
+	logger.Info("untarring file into tmpdir")
+	e.untarFile(logger, tarFilename, tmpdir)
 
-	e.logger.WithFields(logrus.Fields{
-		"directory": tmpdir,
-	}).Info("extracting events from files in directory")
-	e.extractEvents(tmpdir, eventChannel)
+	logger.Info("extracting events from files in directory")
+	e.extractEvents(logger, tmpdir, eventChannel)
 	return eventChannel, nil
 }
 
 // untar target tarball into tmpdir
-func (e *EventExtractor) untarFile(filename string, tmpdir string) {
+func (e *EventExtractor) untarFile(logger *logrus.Entry, filename string, tmpdir string) {
 	gzipfile, err := os.Open(filename)
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
-			"err":  err,
-			"file": filename,
+		logger.WithFields(logrus.Fields{
+			"err": err,
 		}).Error("failed to open file")
 		return
 	}
 	reader, err := gzip.NewReader(gzipfile)
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
-			"err":  err,
-			"file": filename,
+		logger.WithFields(logrus.Fields{
+			"err": err,
 		}).Error("failed to unzip file")
 		return
 	}
 	defer reader.Close()
 
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("error creating temp directory")
 	}
 	tarReader := tar.NewReader(reader)
 	for {
-		if !e.readTarLine(tarReader, tmpdir) {
+		if !e.readTarLine(logger, tarReader, tmpdir) {
 			break
 		}
 	}
 }
 
-func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool {
+func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader, tmpdir string) bool {
 	header, err := tarReader.Next()
 	if err == io.EOF {
 		return false
 	} else if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("error while reading tar file")
 		return false
@@ -121,7 +118,7 @@ func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool 
 	info := header.FileInfo()
 	if info.IsDir() {
 		if err = os.MkdirAll(path, info.Mode()); err != nil {
-			e.logger.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"dir": path,
 				"err": err,
 			}).Error("error while creating directory")
@@ -130,7 +127,7 @@ func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool 
 	}
 	dir := filepath.Dir(path)
 	if err = os.MkdirAll(dir, 0744); err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err":      err,
 			"filename": path,
 			"dir":      dir,
@@ -139,7 +136,7 @@ func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool 
 	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err":  err,
 			"dst":  path,
 			"mode": info.Mode(),
@@ -149,7 +146,7 @@ func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool 
 	defer file.Close()
 	_, err = io.Copy(file, tarReader)
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err": err,
 			"dst": path,
 		}).Error("error copying file")
@@ -159,7 +156,7 @@ func (e *EventExtractor) readTarLine(tarReader *tar.Reader, tmpdir string) bool 
 }
 
 // extract events from given target tmpdir (where extracted files would be)
-func (e *EventExtractor) extractEvents(tmpdir string, eventChannel chan types.EventEnvelope) {
+func (e *EventExtractor) extractEvents(logger *logrus.Entry, tmpdir string, eventChannel chan types.EventEnvelope) {
 	eventTypesMatches := []EventTypeMatch{
 		{
 			glob:         "/*/events/cluster.json",
@@ -183,74 +180,100 @@ func (e *EventExtractor) extractEvents(tmpdir string, eventChannel chan types.Ev
 		},
 	}
 
+	versions, err := getVersionsFromFile(tmpdir, "/*/versions.json")
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"err": err,
+		}).Warning("error extracting versions")
+	}
 	for _, eventTypeMatch := range eventTypesMatches {
-		e.extractEventsForEventType(eventTypeMatch, tmpdir, eventChannel)
+		e.extractEventsForEventType(logger, eventTypeMatch, tmpdir, versions, eventChannel)
 	}
 	close(eventChannel)
 }
 
-func (e *EventExtractor) extractEventsForEventType(eventTypeMatch EventTypeMatch, tmpdir string, eventChannel chan types.EventEnvelope) {
+func getVersionsFromFile(tmpdir string, filename string) (map[string]string, error) {
+	versions := map[string]string{}
+	files, err := filepath.Glob(tmpdir + filename)
+	if err != nil {
+		return versions, fmt.Errorf("could not glob %s in %s", filename, tmpdir)
+	}
+	if len(files) < 1 {
+		return versions, fmt.Errorf("no versions file found (%s)", filename)
+	}
+	jsonFile, err := os.Open(files[0])
+	if err != nil {
+		return versions, err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	err = json.Unmarshal(byteValue, &versions)
+	if err != nil {
+		return versions, err
+	}
+	return versions, nil
+}
+
+func (e *EventExtractor) extractEventsForEventType(logger *logrus.Entry, eventTypeMatch EventTypeMatch, tmpdir string, versions map[string]string, eventChannel chan types.EventEnvelope) {
 	files, err := filepath.Glob(fmt.Sprintf("%s%s", tmpdir, eventTypeMatch.glob))
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
-			"err":    err,
-			"target": tmpdir,
+		logger.WithFields(logrus.Fields{
+			"err": err,
 		}).Error("error globbing files")
 		return
 	}
-	e.logger.WithFields(logrus.Fields{
+	logger.WithFields(logrus.Fields{
 		"files": files,
 		"glob":  eventTypeMatch.glob,
 	}).Info("extracting events from files in directory")
 
 	for _, jFile := range files {
-		resources, err := e.getResourcesFromFile(jFile)
+		resources, err := e.getResourcesFromFile(logger, jFile)
 		if err != nil {
-			e.logger.WithFields(logrus.Fields{
-				"err":  err,
-				"file": jFile,
+			logger.WithFields(logrus.Fields{
+				"err":      err,
+				"jsonFile": jFile,
 			}).Error("Error getting resources from json file")
 		}
-		e.transformResourcesToEvents(eventTypeMatch, resources, eventChannel)
+		e.transformResourcesToEvents(logger, eventTypeMatch, resources, versions, eventChannel)
 	}
 }
 
-func (e *EventExtractor) transformResourcesToEvents(eventTypeMatch EventTypeMatch, resources []map[string]interface{}, eventChannel chan types.EventEnvelope) {
+func (e *EventExtractor) transformResourcesToEvents(logger *logrus.Entry, eventTypeMatch EventTypeMatch, resources []map[string]interface{}, versions map[string]string, eventChannel chan types.EventEnvelope) {
 	for _, resource := range resources {
 		clusterID, ok := resource[eventTypeMatch.clusterIDKey]
 		if !ok {
-			e.logger.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"resource":       resource,
 				"cluster_id_key": eventTypeMatch.clusterIDKey,
 			}).Warning("could not extract cluster_id from resource")
 			return
 		}
+		event := types.Event{
+			Name:    eventTypeMatch.eventName,
+			Payload: resource,
+		}
+		logger = logger.WithFields(logrus.Fields{
+			"cluster_id":     clusterID,
+			"cluster_id_key": eventTypeMatch.clusterIDKey,
+			"event_type":     event.Name,
+		})
+		resource["versions"] = versions
 		if eventTypeMatch.eventName == "ClusterState" {
 			resource["onprem"] = true
 			// delete hosts, as message could be too big
 			// hosts are covered by the HostState event type
 			delete(resource, "hosts")
 		}
-		event := types.Event{
-			Name:    eventTypeMatch.eventName,
-			Payload: resource,
-		}
-		e.logger.WithFields(logrus.Fields{
-			"cluster_id": clusterID,
-			"event_type": event.Name,
-		}).Info("generating event for cluster")
+		logger.Info("generating event for cluster")
 		cID, ok := clusterID.(string)
 		if !ok {
-			e.logger.WithFields(logrus.Fields{
-				"cluster_id":     clusterID,
-				"cluster_id_key": eventTypeMatch.clusterIDKey,
-			}).Warning("cluster_id not a string")
+			logger.Warning("cluster_id not a string")
 			return
 		}
 
-		e.logger.WithFields(logrus.Fields{
-			"event":      event,
-			"cluster_id": cID,
+		logger.WithFields(logrus.Fields{
+			"event": event,
 		}).Debug("generated event")
 		eventChannel <- types.EventEnvelope{
 			Key:   []byte(cID),
@@ -260,11 +283,11 @@ func (e *EventExtractor) transformResourcesToEvents(eventTypeMatch EventTypeMatc
 
 }
 
-func (e *EventExtractor) getResourcesFromFile(filename string) ([]map[string]interface{}, error) {
+func (e *EventExtractor) getResourcesFromFile(logger *logrus.Entry, filename string) ([]map[string]interface{}, error) {
 	resources := []map[string]interface{}{}
 	jsonFile, err := os.Open(filename)
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"file": filename,
 			"err":  err,
 		}).Error("Error opening file")
@@ -274,7 +297,7 @@ func (e *EventExtractor) getResourcesFromFile(filename string) ([]map[string]int
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &resources)
 	if err != nil {
-		e.logger.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"err": err,
 		}).Warning("Error decoding json file for resource list, trying resource")
 		resource := map[string]interface{}{}
