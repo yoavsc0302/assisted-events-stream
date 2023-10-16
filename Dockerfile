@@ -8,7 +8,7 @@ RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=projecti
 
 RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=onprem ./cmd/onprem/main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.2
 
 COPY --from=build /app/projection /
 COPY --from=build /app/onprem /
