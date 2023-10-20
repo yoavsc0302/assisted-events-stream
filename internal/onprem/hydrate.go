@@ -160,23 +160,25 @@ func (h *OnPremEventsHydrator) downloadURL(url string, msg kafka.Message) {
 
 func (h *OnPremEventsHydrator) ProcessMessage(ctx context.Context, msg *kafka.Message) error {
 	for _, header := range msg.Headers {
-		if header.Key == "service" {
-			service := string(header.Value)
-			if service == "assisted-installer" {
-				payload := OnPremPayload{}
-				err := json.Unmarshal(msg.Value, &payload)
-				if err != nil {
-					h.logger.WithFields(logrus.Fields{
-						"msg": msg,
-					}).Warning("could not decode message value")
-					continue
-				}
+		if header.Key != "service" {
+			h.ackChannel <- *msg
+			continue
+		}
+		service := string(header.Value)
+		if service == "assisted-installer" {
+			payload := OnPremPayload{}
+			err := json.Unmarshal(msg.Value, &payload)
+			if err != nil {
 				h.logger.WithFields(logrus.Fields{
-					"payload": payload,
-					"msg":     msg,
-				}).Info("received and decoded message")
-				h.enqueueDownload(payload.Url, *msg)
+					"msg": msg,
+				}).Warning("could not decode message value")
+				continue
 			}
+			h.logger.WithFields(logrus.Fields{
+				"payload": payload,
+				"msg":     msg,
+			}).Info("received and decoded message")
+			h.enqueueDownload(payload.Url, *msg)
 		}
 	}
 	return nil
