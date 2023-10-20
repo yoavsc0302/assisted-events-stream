@@ -50,10 +50,20 @@ var _ = Describe("test event extractor", func() {
 	})
 })
 
-func assertHasVersions(payload map[string]interface{}) {
-	versions, ok := payload["versions"].(map[string]string)
+func assertHasVersions(event types.Event) {
+	versions, ok := event.Metadata["versions"]
 	Expect(ok).To(Equal(true))
-	assistedServiceVersion, ok := versions["assisted-installer-service"]
+
+	versionsMap, ok := versions.(map[string]interface{})
+	Expect(ok).To(Equal(true))
+
+	componentsVersions, ok := versionsMap["versions"]
+	Expect(ok).To(Equal(true))
+
+	componentsVersionsMap, ok := componentsVersions.(map[string]string)
+	Expect(ok).To(Equal(true))
+
+	assistedServiceVersion, ok := componentsVersionsMap["assisted-installer-service"]
 	Expect(ok).To(Equal(true))
 	Expect(assistedServiceVersion).To(Equal("quay.io/app-sre/assisted-service:fe274eb"))
 }
@@ -62,7 +72,7 @@ func assertEventIsInRightSequence(event types.EventEnvelope, eventNumber int, ex
 	Expect(event.Key).To(Equal([]byte(expectedClusterID)))
 	payload, ok := event.Event.Payload.(map[string]interface{})
 	Expect(ok).To(Equal(true))
-	assertHasVersions(payload)
+	assertHasVersions(event.Event)
 	if eventNumber <= expectedClusterEvents {
 		Expect(event.Event.Name).To(Equal("ClusterState"))
 		clusterID, ok := payload["id"].(string)
