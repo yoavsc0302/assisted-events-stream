@@ -239,6 +239,17 @@ func (e *EventExtractor) extractEventsForEventType(logger *logrus.Entry, eventTy
 	}
 }
 
+func getMetadata(eventName string, versions map[string]string) map[string]interface{} {
+	return map[string]interface{}{
+		"versions": map[string]interface{}{
+			// nested value, as here would go other version related metadata
+			// such as `release_tag`. See getVersionsFromMetadata method in
+			// package projection/process
+			"versions": versions,
+		},
+	}
+}
+
 func (e *EventExtractor) transformResourcesToEvents(logger *logrus.Entry, eventTypeMatch EventTypeMatch, resources []map[string]interface{}, versions map[string]string, eventChannel chan types.EventEnvelope) {
 	for _, resource := range resources {
 		clusterID, ok := resource[eventTypeMatch.clusterIDKey]
@@ -249,22 +260,22 @@ func (e *EventExtractor) transformResourcesToEvents(logger *logrus.Entry, eventT
 			}).Warning("could not extract cluster_id from resource")
 			return
 		}
-		event := types.Event{
-			Name:    eventTypeMatch.eventName,
-			Payload: resource,
-		}
-		logger = logger.WithFields(logrus.Fields{
-			"cluster_id":     clusterID,
-			"cluster_id_key": eventTypeMatch.clusterIDKey,
-			"event_type":     event.Name,
-		})
-		resource["versions"] = versions
 		if eventTypeMatch.eventName == "ClusterState" {
 			resource["onprem"] = true
 			// delete hosts, as message could be too big
 			// hosts are covered by the HostState event type
 			delete(resource, "hosts")
 		}
+		event := types.Event{
+			Name:     eventTypeMatch.eventName,
+			Payload:  resource,
+			Metadata: getMetadata(eventTypeMatch.eventName, versions),
+		}
+		logger = logger.WithFields(logrus.Fields{
+			"cluster_id":     clusterID,
+			"cluster_id_key": eventTypeMatch.clusterIDKey,
+			"event_type":     event.Name,
+		})
 		logger.Info("generating event for cluster")
 		cID, ok := clusterID.(string)
 		if !ok {
