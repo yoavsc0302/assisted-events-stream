@@ -165,21 +165,23 @@ func (h *OnPremEventsHydrator) ProcessMessage(ctx context.Context, msg *kafka.Me
 			continue
 		}
 		service := string(header.Value)
-		if service == "assisted-installer" {
-			payload := OnPremPayload{}
-			err := json.Unmarshal(msg.Value, &payload)
-			if err != nil {
-				h.logger.WithFields(logrus.Fields{
-					"msg": msg,
-				}).Warning("could not decode message value")
-				continue
-			}
-			h.logger.WithFields(logrus.Fields{
-				"payload": payload,
-				"msg":     msg,
-			}).Info("received and decoded message")
-			h.enqueueDownload(payload.Url, *msg)
+		if service != "assisted-installer" {
+			h.ackChannel <- *msg
+			continue
 		}
+		payload := OnPremPayload{}
+		err := json.Unmarshal(msg.Value, &payload)
+		if err != nil {
+			h.logger.WithFields(logrus.Fields{
+				"msg": msg,
+			}).Warning("could not decode message value")
+			continue
+		}
+		h.logger.WithFields(logrus.Fields{
+			"payload": payload,
+			"msg":     msg,
+		}).Info("received and decoded message")
+		h.enqueueDownload(payload.Url, *msg)
 	}
 	return nil
 }
