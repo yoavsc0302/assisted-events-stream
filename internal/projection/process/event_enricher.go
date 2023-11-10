@@ -93,14 +93,20 @@ func (e *EventEnricher) GetBaseEnrichedEvent(event *types.Event, cluster map[str
 	if err != nil {
 		return nil, fmt.Errorf("Error getting uuid namespace, most likely seed is not 16 characters")
 	}
-
 	enrichedEvent := &types.EnrichedEvent{}
 	props, err := getProps(event.Payload)
 	if err != nil {
 		e.logger.WithError(err).Debug("error while extracting event props")
 	}
 	enrichedEvent.Event.Properties = props
-	eventBytes, err := json.Marshal(event.Payload)
+
+	// remove ID, as it's passed as INT (only from onprem data)
+	payload, ok := event.Payload.(map[string]interface{})
+	if ok {
+		delete(payload, "ID")
+	}
+
+	eventBytes, err := json.Marshal(payload)
 	if err != nil {
 		return enrichedEvent, err
 	}
