@@ -200,7 +200,7 @@ objects:
           - mountPath: /health
             name: health
           - mountPath: /data
-            name: redis-data
+            name: ${REDIS_PVC_NAME}
             subPath: null
           - mountPath: /opt/bitnami/redis/mounted-etc
             name: config
@@ -263,7 +263,7 @@ objects:
         labels:
           app.kubernetes.io/instance: assisted-events-streams
           app.kubernetes.io/name: redis
-        name: redis-data
+        name: ${REDIS_PVC_NAME}
       spec:
         accessModes:
         - ReadWriteOnce
@@ -793,6 +793,8 @@ parameters:
   value: quay.io/edge-infrastructure/redis
 - name: REDIS_STORAGE
   value: 100Gi
+- name: REDIS_PVC_NAME
+  value: redis-data
 - name: IMAGE_PULL_POLICY
   value: Always
 - name: REPLICAS_COUNT
