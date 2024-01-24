@@ -68,6 +68,7 @@ objects:
             Delete data from indices older than ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS} months
           options:
             continue_if_exception: False
+            ignore_empty_list: True
           filters:
           - filtertype: pattern
             kind: regex
@@ -84,6 +85,7 @@ objects:
           options:
             max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
             timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
+            ignore_empty_list: True
           filters:
           - filtertype: pattern
             kind: regex
