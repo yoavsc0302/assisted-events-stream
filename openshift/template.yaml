@@ -85,7 +85,6 @@ objects:
           options:
             max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
             timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
-            wait_for_completion: ${OPENSEARCH_CURATOR_FORCEMERGE_WAIT_FOR_COMPLETION}
             ignore_empty_list: True
           filters:
           - filtertype: pattern
@@ -901,8 +900,6 @@ parameters:
   value: "2"
 - name: OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS
   value: "21600"
-- name: OPENSEARCH_CURATOR_FORCEMERGE_WAIT_FOR_COMPLETION
-  value: "False"
 - name: OPENSEARCH_PORT
   value: "9200"
 - name: KAFKA_CREDENTIALS_SECRETNAME
