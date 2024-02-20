@@ -78,23 +78,6 @@ objects:
             direction: older
             unit: months
             unit_count: ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS}
-        2:
-          action: forcemerge
-          description: >-
-            Perform a forceMerge on non-hot indices (older than ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS} days)
-          options:
-            max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
-            timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
-            ignore_empty_list: True
-          filters:
-          - filtertype: pattern
-            kind: regex
-            value: ${OPENSEARCH_CURATOR_FORCEMERGE_PATTERN}
-          - filtertype: age
-            source: creation_date
-            direction: older
-            unit: days
-            unit_count: ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS}
     configuration.yaml: |-
       client:
         username: ${OPENSEARCH_USERNAME}
@@ -892,14 +875,6 @@ parameters:
   value: "18"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN
   value: ^(assisted-service-events|assisted-installer-events).*
-- name: OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS
-  value: "32"
-- name: OPENSEARCH_CURATOR_FORCEMERGE_PATTERN
-  value: ^(assisted-service-events|assisted-installer-events).*
-- name: OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS
-  value: "2"
-- name: OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS
-  value: "21600"
 - name: OPENSEARCH_PORT
   value: "9200"
 - name: KAFKA_CREDENTIALS_SECRETNAME

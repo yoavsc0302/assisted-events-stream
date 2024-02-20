@@ -35,22 +35,6 @@
               direction: older
               unit: months
               unit_count: ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS}
-          2:
-            action: forcemerge
-            description: >-
-              Perform a forceMerge on non-hot indices (older than ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS} days)
-            options:
-              max_num_segments: ${OPENSEARCH_CURATOR_FORCEMERGE_MAX_SEGMENTS}
-              timeout_override: ${OPENSEARCH_CURATOR_FORCEMERGE_TIMEOUT_SECONDS}
-            filters:
-            - filtertype: pattern
-              kind: regex
-              value: ${OPENSEARCH_CURATOR_FORCEMERGE_PATTERN}
-            - filtertype: age
-              source: creation_date
-              direction: older
-              unit: days
-              unit_count: ${OPENSEARCH_CURATOR_FORCEMERGE_AFTER_DAYS}
 - op: add
   path: /objects/0
   value:
