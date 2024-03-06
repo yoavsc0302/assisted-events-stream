@@ -32,10 +32,8 @@ func getDefaultFieldsMapToList() []string {
 
 func getDefaultFieldsToDelete() []string {
 	return []string{
-		"cluster.kind",
 		"cluster.pull_secret",
 		"cluster.ssh_public_key",
-		"cluster.hosts[*].kind",
 		"cluster.hosts[*].infra_env.ssh_authorized_key",
 		"infra_envs[*].ssh_authorized_key",
 	}

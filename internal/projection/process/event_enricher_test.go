@@ -219,9 +219,6 @@ var _ = Describe("Process message", func() {
 			_, ok := enrichedEvent.Cluster["pull_secret"]
 			Expect(ok).To(BeFalse())
 
-			_, ok = enrichedEvent.Cluster["kind"]
-			Expect(ok).To(BeFalse())
-
 			_, ok = enrichedEvent.Cluster["ssh_public_key"]
 			Expect(ok).To(BeFalse())
 
