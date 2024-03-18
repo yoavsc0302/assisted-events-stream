@@ -324,7 +324,7 @@
                   mountPath: /opt/bitnami/scripts/start-scripts
                 - name: health
                   mountPath: /health
-                - name: redis-data
+                - name: ${REDIS_PVC_NAME}
                   mountPath: /data
                   subPath: 
                 - name: config
@@ -381,7 +381,7 @@
               emptyDir: {}
       volumeClaimTemplates:
         - metadata:
-            name: redis-data
+            name: ${REDIS_PVC_NAME}
             labels:
               app.kubernetes.io/name: redis
               app.kubernetes.io/instance: assisted-events-streams
