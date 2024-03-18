@@ -21,11 +21,30 @@
       actions.yaml: |-
         actions:
           1:
+            action: replicas
+            description: >-
+              Reduce number of replicas to 0 for indices ${OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS} months
+            options:
+              count: 0
+              continue_if_exception: False
+              ignore_empty_list: True
+            filters:
+            - filtertype: pattern
+              kind: regex
+              value: ${OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN}
+            - filtertype: age
+              source: creation_date
+              direction: older
+              unit: months
+              unit_count: ${OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS}
+        actions:
+          2:
             action: delete_indices
             description: >-
               Delete data from indices older than ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS} months
             options:
               continue_if_exception: False
+              ignore_empty_list: True
             filters:
             - filtertype: pattern
               kind: regex

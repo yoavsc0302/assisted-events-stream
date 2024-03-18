@@ -95,6 +95,8 @@ parameters:
   value: "True"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS
   value: "18"
+- name: OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS
+  value: "1"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN
   value: '^(assisted-service-events|assisted-installer-events).*'
 - name: OPENSEARCH_PORT
@@ -181,6 +183,8 @@ parameters:
   value: "1000"
 - name: ONPREM_EVENT_CHANNEL_BUFFER_SIZE
   value: "1000"
+- name: REDIS_PVC_NAME
+  value: redis-data
 objects:
 - apiVersion: v1
   kind: ConfigMap

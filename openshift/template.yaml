@@ -63,6 +63,24 @@ objects:
     actions.yaml: |-
       actions:
         1:
+          action: replicas
+          description: >-
+            Reduce number of replicas to 0 for indices ${OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS} months
+          options:
+            count: 0
+            continue_if_exception: False
+            ignore_empty_list: True
+          filters:
+          - filtertype: pattern
+            kind: regex
+            value: ${OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN}
+          - filtertype: age
+            source: creation_date
+            direction: older
+            unit: months
+            unit_count: ${OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS}
+      actions:
+        2:
           action: delete_indices
           description: >-
             Delete data from indices older than ${OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS} months
@@ -776,10 +794,10 @@ parameters:
   value: 6.2.7-debian-10-r23
 - name: REDIS_IMAGE_NAME
   value: quay.io/edge-infrastructure/redis
-- name: REDIS_STORAGE
-  value: 100Gi
 - name: REDIS_PVC_NAME
   value: redis-data
+- name: REDIS_STORAGE
+  value: 100Gi
 - name: IMAGE_PULL_POLICY
   value: Always
 - name: REPLICAS_COUNT
@@ -873,6 +891,8 @@ parameters:
   value: "True"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS
   value: "18"
+- name: OPENSEARCH_CURATOR_ZERO_REPLICAS_AFTER_MONTHS
+  value: "1"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_PATTERN
   value: ^(assisted-service-events|assisted-installer-events).*
 - name: OPENSEARCH_PORT
@@ -959,3 +979,5 @@ parameters:
   value: "1000"
 - name: ONPREM_EVENT_CHANNEL_BUFFER_SIZE
   value: "1000"
+- name: REDIS_PVC_NAME
+  value: redis-data

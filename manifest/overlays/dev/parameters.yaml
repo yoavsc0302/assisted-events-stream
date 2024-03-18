@@ -11,6 +11,11 @@
 - op: add
   path: /parameters/0
   value:
+    name: REDIS_PVC_NAME
+    value: redis-data
+- op: add
+  path: /parameters/0
+  value:
     name: REDIS_IMAGE_NAME
     value: quay.io/edge-infrastructure/redis
 - op: add
