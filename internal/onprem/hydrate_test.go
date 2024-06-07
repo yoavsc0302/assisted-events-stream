@@ -2,7 +2,7 @@ package onprem
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -55,7 +55,7 @@ var _ = Describe("test event hydrator", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		logger := logrus.New()
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 		ackChannel = make(chan kafka.Message, 1000)
 		downloadChannel = make(chan DownloadUrlMessage, 1000)
 		untarChannel = make(chan FilenameMessage, 1000)
@@ -94,6 +94,7 @@ var _ = Describe("test event hydrator", func() {
 			mockEventExtractor.key = expectedKey
 			mockEventExtractor.event = expectedEvent
 			mockDownloader.EXPECT().DownloadFile(expectedURL).Times(1).Return(expectedTarFilename, nil)
+			mockDownloader.EXPECT().Close().Times(1).Return()
 			mockWriter.EXPECT().Write(ctx, expectedKey, expectedEvent)
 			go hydrator.Listen()
 			message := kafka.Message{
