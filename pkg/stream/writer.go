@@ -38,9 +38,8 @@ type KafkaWriter struct {
 func (w *KafkaWriter) Write(ctx context.Context, key []byte, value interface{}) error {
 	encodedValue, err := json.Marshal(value)
 	if err != nil {
-		w.logger.WithFields(logrus.Fields{
+		w.logger.WithError(err).WithFields(logrus.Fields{
 			"value": value,
-			"err":   err,
 		}).Error("failed to encode json")
 
 		return err

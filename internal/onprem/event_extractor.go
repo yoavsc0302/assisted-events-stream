@@ -53,11 +53,9 @@ func (e *EventExtractor) ExtractEvents(tarFilename string) (chan types.EventEnve
 		"tarFilename": tarFilename,
 	})
 	eventChannel := make(chan types.EventEnvelope, e.eventsBufferSize)
-	tmpdir, err := ioutil.TempDir("", ".untar-")
+	tmpdir, err := os.MkdirTemp("", ".untar-")
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to create tmpdir")
+		logger.WithError(err).Error("failed to create tmpdir")
 		return eventChannel, err
 	}
 	defer os.RemoveAll(tmpdir)
@@ -76,25 +74,16 @@ func (e *EventExtractor) ExtractEvents(tarFilename string) (chan types.EventEnve
 func (e *EventExtractor) untarFile(logger *logrus.Entry, filename string, tmpdir string) {
 	gzipfile, err := os.Open(filename)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to open file")
+		logger.WithError(err).Error("failed to open file")
 		return
 	}
 	reader, err := gzip.NewReader(gzipfile)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to unzip file")
+		logger.WithError(err).Error("failed to unzip file")
 		return
 	}
 	defer reader.Close()
 
-	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("error creating temp directory")
-	}
 	tarReader := tar.NewReader(reader)
 	for {
 		if !e.readTarLine(logger, tarReader, tmpdir) {
@@ -108,9 +97,7 @@ func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader
 	if err == io.EOF {
 		return false
 	} else if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("error while reading tar file")
+		logger.WithError(err).Error("error while reading tar file")
 		return false
 	}
 
@@ -118,17 +105,15 @@ func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader
 	info := header.FileInfo()
 	if info.IsDir() {
 		if err = os.MkdirAll(path, info.Mode()); err != nil {
-			logger.WithFields(logrus.Fields{
+			logger.WithError(err).WithFields(logrus.Fields{
 				"dir": path,
-				"err": err,
 			}).Error("error while creating directory")
 			return true
 		}
 	}
 	dir := filepath.Dir(path)
 	if err = os.MkdirAll(dir, 0744); err != nil {
-		logger.WithFields(logrus.Fields{
-			"err":      err,
+		logger.WithError(err).WithFields(logrus.Fields{
 			"filename": path,
 			"dir":      dir,
 		}).Error("error creating directory for file")
@@ -136,8 +121,7 @@ func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader
 	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err":  err,
+		logger.WithError(err).WithFields(logrus.Fields{
 			"dst":  path,
 			"mode": info.Mode(),
 		}).Error("error creating file")
@@ -146,8 +130,7 @@ func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader
 	defer file.Close()
 	_, err = io.Copy(file, tarReader)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
+		logger.WithError(err).WithFields(logrus.Fields{
 			"dst": path,
 		}).Error("error copying file")
 		return true
@@ -182,9 +165,7 @@ func (e *EventExtractor) extractEvents(logger *logrus.Entry, tmpdir string, even
 
 	versions, err := getVersionsFromFile(tmpdir, "/*/versions.json")
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Warning("error extracting versions")
+		logger.WithError(err).Warning("error extracting versions")
 	}
 	for _, eventTypeMatch := range eventTypesMatches {
 		e.extractEventsForEventType(logger, eventTypeMatch, tmpdir, versions, eventChannel)
@@ -206,7 +187,7 @@ func getVersionsFromFile(tmpdir string, filename string) (map[string]string, err
 		return versions, err
 	}
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &versions)
 	if err != nil {
 		return versions, err
@@ -217,9 +198,7 @@ func getVersionsFromFile(tmpdir string, filename string) (map[string]string, err
 func (e *EventExtractor) extractEventsForEventType(logger *logrus.Entry, eventTypeMatch EventTypeMatch, tmpdir string, versions map[string]string, eventChannel chan types.EventEnvelope) {
 	files, err := filepath.Glob(fmt.Sprintf("%s%s", tmpdir, eventTypeMatch.glob))
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("error globbing files")
+		logger.WithError(err).Error("error globbing files")
 		return
 	}
 	logger.WithFields(logrus.Fields{
@@ -230,8 +209,7 @@ func (e *EventExtractor) extractEventsForEventType(logger *logrus.Entry, eventTy
 	for _, jFile := range files {
 		resources, err := e.getResourcesFromFile(logger, jFile)
 		if err != nil {
-			logger.WithFields(logrus.Fields{
-				"err":      err,
+			logger.WithError(err).WithFields(logrus.Fields{
 				"jsonFile": jFile,
 			}).Error("Error getting resources from json file")
 		}
@@ -298,9 +276,8 @@ func (e *EventExtractor) getResourcesFromFile(logger *logrus.Entry, filename str
 	resources := []map[string]interface{}{}
 	jsonFile, err := os.Open(filename)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
+		logger.WithError(err).WithFields(logrus.Fields{
 			"file": filename,
-			"err":  err,
 		}).Error("Error opening file")
 		return []map[string]interface{}{}, err
 	}
@@ -308,9 +285,7 @@ func (e *EventExtractor) getResourcesFromFile(logger *logrus.Entry, filename str
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &resources)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Warning("Error decoding json file for resource list, trying resource")
+		logger.WithError(err).Warning("Error decoding json file for resource list, trying resource")
 		resource := map[string]interface{}{}
 		err = json.Unmarshal(byteValue, &resource)
 		if err != nil {

@@ -46,30 +46,20 @@ type FileDownloader struct {
 
 // download from given URL, returns full path of downloaded file
 func (d *FileDownloader) DownloadFile(rawFileURL string) (string, error) {
+	logger := d.logger.WithField("url", rawFileURL)
 
 	fileURL, err := url.Parse(rawFileURL)
 	if err != nil {
-		d.logger.WithFields(logrus.Fields{
-			"err": err,
-			"url": rawFileURL,
-		}).Error("failed to parse url")
+		logger.WithError(err).Error("Failed to parse url")
 		return "", err
 	}
 	path := fileURL.Path
 	segments := strings.Split(path, "/")
 	filename := filepath.Join(d.downloadDir, segments[len(segments)-1])
-	d.logger.WithFields(logrus.Fields{
-		"filename": filename,
-		"url":      rawFileURL,
-	}).Info("downloading file from url")
-	file, err := os.Create(filename)
-	if err != nil {
-		d.logger.WithFields(logrus.Fields{
-			"err":  err,
-			"file": filename,
-		}).Error("failed to create file for download")
-		return "", err
-	}
+
+	logger = logger.WithField("filename", filename)
+	logger.Info("Downloading file from url")
+
 	client := http.Client{
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			r.URL.Opaque = r.URL.Path
@@ -79,24 +69,24 @@ func (d *FileDownloader) DownloadFile(rawFileURL string) (string, error) {
 
 	resp, err := client.Get(rawFileURL)
 	if err != nil {
-		d.logger.WithFields(logrus.Fields{
-			"err": err,
-			"url": rawFileURL,
-		}).Error("failed to download file")
+		logger.WithError(err).Error("Failed to download file")
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	_, err = io.Copy(file, resp.Body)
-
+	file, err := os.Create(filename)
 	if err != nil {
-		d.logger.WithFields(logrus.Fields{
-			"err":  err,
-			"file": filename,
-		}).Error("failed to copy file")
+		logger.WithError(err).Error("Failed to create file for download")
 		return "", err
 	}
 	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		logger.WithError(err).Error("Failed to copy file")
+		return "", err
+	}
+
 	return filename, nil
 }
 

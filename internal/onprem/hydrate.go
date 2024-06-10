@@ -57,21 +57,15 @@ func NewOnPremEventsHydrator(ctx context.Context, logger *logrus.Logger, ackChan
 	doneChannel := make(chan struct{}, 1)
 	downloader, err := NewFileDownloaderFromEnv(logger)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("error initializing downloader")
+		logger.WithError(err).Fatal("error initializing downloader")
 	}
 	eventExtractor, err := NewEventExtractorFromEnv(logger, channelsConfig)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("error initializing extractor")
+		logger.WithError(err).Fatal("error initializing extractor")
 	}
 	writer, err := stream.NewWriter(logger)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("error initializing kafka writer")
+		logger.WithError(err).Fatal("error initializing kafka writer")
 	}
 	return &OnPremEventsHydrator{
 		ctx:             ctx,
@@ -106,7 +100,7 @@ func (h *OnPremEventsHydrator) Listen() {
 
 func (h *OnPremEventsHydrator) Close(ctx context.Context) {
 	h.done <- struct{}{}
-	ctx.Done()
+	h.downloader.Close()
 }
 
 func (h *OnPremEventsHydrator) extractEvents(filename string, msg kafka.Message) {
@@ -115,11 +109,10 @@ func (h *OnPremEventsHydrator) extractEvents(filename string, msg kafka.Message)
 	}).Debug("extracting events for filename")
 	eventChannel, err := h.eventExtractor.ExtractEvents(filename)
 	if err != nil {
-		h.logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Warning("error when extracting events")
+		h.logger.WithError(err).Warning("error when extracting events")
 		return
 	}
+
 	var wg sync.WaitGroup
 	for event := range eventChannel {
 		wg.Add(1)
@@ -135,54 +128,46 @@ func (h *OnPremEventsHydrator) extractEvents(filename string, msg kafka.Message)
 func (h *OnPremEventsHydrator) notifyEvent(envelope types.EventEnvelope) {
 	h.logger.WithFields(logrus.Fields{
 		"cluster_id": envelope.Key,
-	}).Debug("notfiying event for on-prem cluster")
+	}).Debug("notifying event for on-prem cluster")
 	if err := h.writer.Write(h.ctx, envelope.Key, envelope.Event); err != nil {
-		h.logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Warning("error when notifying event")
+		h.logger.WithError(err).Warning("error when notifying event")
 	}
 }
 
 func (h *OnPremEventsHydrator) downloadURL(url string, msg kafka.Message) {
-	h.logger.WithFields(logrus.Fields{
-		"url": url,
-	}).Info("downloading file from url")
+	logger := h.logger.WithField("url", url)
+	logger.Info("downloading file from url")
+
 	downloadedFilename, err := h.downloader.DownloadFile(url)
 	if err != nil {
-		h.logger.WithFields(logrus.Fields{
-			"url": url,
-			"err": err,
-		}).Warning("error downloading from url")
+		logger.WithError(err).Warning("error downloading from url")
 		return
 	}
 	h.untarChannel <- FilenameMessage{Filename: downloadedFilename, Msg: msg}
 }
 
 func (h *OnPremEventsHydrator) ProcessMessage(ctx context.Context, msg *kafka.Message) error {
-	for _, header := range msg.Headers {
-		if header.Key != "service" {
-			h.ackChannel <- *msg
-			continue
-		}
-		service := string(header.Value)
-		if service != "assisted-installer" {
-			h.ackChannel <- *msg
-			continue
-		}
-		payload := OnPremPayload{}
-		err := json.Unmarshal(msg.Value, &payload)
-		if err != nil {
-			h.logger.WithFields(logrus.Fields{
-				"msg": msg,
-			}).Warning("could not decode message value")
-			continue
-		}
-		h.logger.WithFields(logrus.Fields{
-			"payload": payload,
-			"msg":     msg,
-		}).Info("received and decoded message")
-		h.enqueueDownload(payload.Url, *msg)
+	if !shouldProcess(msg) {
+		h.ackChannel <- *msg
+
+		return nil
 	}
+
+	payload := OnPremPayload{}
+	err := json.Unmarshal(msg.Value, &payload)
+	if err != nil {
+		h.logger.WithError(err).WithField("msg", msg).Warning("could not decode message value")
+
+		return nil // This is a non retry-able error, it will fail systematically
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"payload": payload,
+		"msg":     msg,
+	}).Info("received and decoded message")
+
+	h.enqueueDownload(payload.Url, *msg)
+
 	return nil
 }
 
@@ -191,4 +176,14 @@ func (h *OnPremEventsHydrator) enqueueDownload(fileURL string, msg kafka.Message
 		"url": fileURL,
 	}).Debug("enqueued url for download")
 	h.downloadChannel <- DownloadUrlMessage{Url: fileURL, Msg: msg}
+}
+
+func shouldProcess(msg *kafka.Message) bool {
+	for _, header := range msg.Headers {
+		if header.Key == "service" && string(header.Value) == "assisted-installer" {
+			return true
+		}
+	}
+
+	return false
 }

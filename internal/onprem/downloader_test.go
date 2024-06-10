@@ -1,7 +1,7 @@
 package onprem
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,8 +18,8 @@ var _ = Describe("Download file", func() {
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
-		logger.Out = ioutil.Discard
-		tmpdir, err := ioutil.TempDir("", ".download-")
+		logger.Out = io.Discard
+		tmpdir, err := os.MkdirTemp("", ".download-")
 		Expect(err).To(BeNil())
 		downloader = NewFileDownloader(logger, tmpdir)
 	})
