@@ -44,5 +44,6 @@ func getDefaultFieldsToAnonymize() map[string]string {
 		"cluster.user_name":                    "cluster.user_id",
 		"cluster.hosts[*].user_name":           "cluster.hosts[*].user_id",
 		"cluster.hosts[*].infra_env.user_name": "cluster.hosts[*].infra_env.user_id",
+		"infra_envs[*].user_name":              "infra_envs[*].user_id",
 	}
 }
