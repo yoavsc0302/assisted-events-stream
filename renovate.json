@@ -1,0 +1,10 @@
+{
+    "automerge": true,
+    "groupName": "tekton updates",
+    "includePaths": [".tekton/*"],
+    "commitMessagePrefix": "NO-ISSUE: ",
+    "prBodyNotes": [
+        "/lgtm",
+        "/approve"
+    ]
+}
