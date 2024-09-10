@@ -91,9 +91,9 @@ parameters:
   value: events-stream-integration
 - name: DURATION
   value: P2M
-- name: BOOTSTRAP_BROKERS_SECRET_KEY
+- name: BOOTSTRAP_SERVERS_SECRET_KEY
   value: bootstrap_brokers
-- name: BOOTSTRAP_BROKERS_SECRET_NAME
+- name: BOOTSTRAP_SERVERS_SECRET_NAME
   value: kafka
 - name: ADMIN_USERNAME_SECRET_KEY
   value: username
