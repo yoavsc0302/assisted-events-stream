@@ -25,10 +25,11 @@ objects:
   spec:
     template:
       spec:
+        restartPolicy: ${RESTART_POLICY}
         containers:
         - command:
           - bash
-          - c
+          - -c
           - /tmp/scripts/reset_offsets.sh
           env:
           - name: ADMIN_USERNAME
@@ -103,3 +104,5 @@ parameters:
   value: password
 - name: ADMIN_PASSWORD_SECRET_NAME
   value: kafka-admin-user
+- name: RESTART_POLICY
+  value: "Never"
