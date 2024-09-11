@@ -72,7 +72,7 @@ objects:
               secretKeyRef:
                 key: ${ZOOKEEPER_CONNECT_STRING_SECRET_KEY}
                 name: ${ZOOKEEPER_CONNECT_STRING_SECRET_NAME}
-          image: ${IMAGE_NAME}:${IMAGE_TAG}
+          image: ${KAFKA_IMAGE_NAME}:${KAFKA_IMAGE_TAG}
           imagePullPolicy: ${IMAGE_PULL_POLICY}
           name: reset-offsets
           resources:
@@ -98,9 +98,9 @@ objects:
             name: enriched-event-projection-zookeeper-client-config
           name: zookeeper-config
 parameters:
-- name: IMAGE_NAME
+- name: KAFKA_IMAGE_NAME
   value: quay.io/strimzi/kafka
-- name: IMAGE_TAG
+- name: KAFKA_IMAGE_TAG
   value: latest-kafka-3.8.0
 - name: IMAGE_PULL_POLICY
   value: Always
