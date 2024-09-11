@@ -11,13 +11,25 @@ objects:
     reset_offsets.sh: |
       #!/bin/bash
 
+      export ZOOKEEPER=$(echo ${ZOOKEEPER_CONNECT_STRING} | cut -d, -f1)
+      ZK_TLS=""
+      if [ "${ZOOKEEPER_TLS}" == "true" ]; then
+        ZK_TLS="--zk-tls-config-file /opt/zookeeper/zookeeper.config"
+      fi
+
       echo "sasl.mechanism=SCRAM-SHA-512
       security.protocol=SASL_SSL
       sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required \\
           username=\"${ADMIN_USERNAME}\" \\
           password=\"${ADMIN_PASSWORD}\";" > /tmp/admin-scram.properties
 
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${ADMIN_USERNAME}" ${ZK_TLS} --operation Read --topic ${KAFKA_TOPIC}
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --add --allow-principal "User:${ADMIN_USERNAME}" ${ZK_TLS} --operation Read --group ${KAFKA_GROUP_ID}
+
       /opt/kafka/bin/kafka-consumer-groups.sh --reset-offsets --group ${KAFKA_GROUP_ID} --topic ${KAFKA_TOPIC} --by-duration ${DURATION} --command-config /tmp/admin-scram.properties --bootstrap-server ${BOOTSTRAP_SERVERS} --execute
+
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --remove --allow-principal "User:${ADMIN_USERNAME}" ${ZK_TLS} --operation Read --topic ${KAFKA_TOPIC} --force
+      /opt/kafka/bin/kafka-acls.sh --authorizer-properties zookeeper.connect=${ZOOKEEPER} --remove --allow-principal "User:${ADMIN_USERNAME}" ${ZK_TLS} --operation Read --group ${KAFKA_GROUP_ID} --force
 - apiVersion: batch/v1
   kind: Job
   metadata:
@@ -53,6 +65,13 @@ objects:
               secretKeyRef:
                 key: ${BOOTSTRAP_SERVERS_SECRET_KEY}
                 name: ${BOOTSTRAP_SERVERS_SECRET_NAME}
+          - name: ZOOKEEPER_TLS
+            value: ${ZOOKEEPER_TLS}
+          - name: ZOOKEEPER_CONNECT_STRING
+            valueFrom:
+              secretKeyRef:
+                key: ${ZOOKEEPER_CONNECT_STRING_SECRET_KEY}
+                name: ${ZOOKEEPER_CONNECT_STRING_SECRET_NAME}
           image: ${IMAGE_NAME}:${IMAGE_TAG}
           imagePullPolicy: ${IMAGE_PULL_POLICY}
           name: reset-offsets
@@ -66,11 +85,18 @@ objects:
           volumeMounts:
           - mountPath: /tmp/scripts
             name: scripts
+          - mountPath: /opt/zookeeper/zookeeper.config
+            name: zookeeper-config
+            subPath: zookeeper.config
         volumes:
         - configMap:
             name: reset-kafka-offsets
             defaultMode: 493
           name: scripts
+        - configMap:
+            defaultMode: 484
+            name: enriched-event-projection-zookeeper-client-config
+          name: zookeeper-config
 parameters:
 - name: IMAGE_NAME
   value: quay.io/strimzi/kafka
@@ -106,3 +132,9 @@ parameters:
   value: kafka-admin-user
 - name: RESTART_POLICY
   value: "Never"
+- name: ZOOKEEPER_TLS
+  value: "false"
+- name: ZOOKEEPER_CONNECT_STRING_SECRET_KEY
+  value: zookeeper_connect_string
+- name: ZOOKEEPER_CONNECT_STRING_SECRET_NAME
+  value: kafka
