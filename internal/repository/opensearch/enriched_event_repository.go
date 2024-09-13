@@ -54,7 +54,7 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 	document := bytes.NewReader(jsonEvent)
 
 	item := opensearchutil.BulkIndexerItem{
-		Index:      r.getIndexName(enrichedEvent.EventTime),
+		Index:      r.getIndexName(enrichedEvent),
 		DocumentID: enrichedEvent.ID,
 		Action:     "index",
 		Body:       document,
@@ -85,9 +85,11 @@ func (r *EnrichedEventRepository) Store(ctx context.Context, enrichedEvent *type
 	return nil
 }
 
-func (r *EnrichedEventRepository) getIndexName(eventTime string) string {
-	t, _ := time.Parse(time.RFC3339, eventTime)
+func (r *EnrichedEventRepository) getIndexName(event *types.EnrichedEvent) string {
+	t, _ := time.Parse(time.RFC3339, event.EventTime)
 	indexSuffix := fmt.Sprintf("%d-%02d", t.Year(), t.Month())
-
+	if _, ok := event.Cluster["onprem"]; ok {
+		indexSuffix = indexSuffix + "-onprem"
+	}
 	return r.indexPrefix + indexSuffix
 }
