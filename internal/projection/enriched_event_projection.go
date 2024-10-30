@@ -131,8 +131,7 @@ func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, even
 	}
 
 	// Hack: Don't process further events from specific users
-	filterOut := p.skipEvent(cluster)
-	if filterOut {
+	if p.skipEvent(cluster) {
 		p.logger.WithFields(logrus.Fields{
 			"cluster_id": clusterID,
 		}).Debug("skipping event")

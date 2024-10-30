@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -282,7 +281,7 @@ func (e *EventExtractor) getResourcesFromFile(logger *logrus.Entry, filename str
 		return []map[string]interface{}{}, err
 	}
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &resources)
 	if err != nil {
 		logger.WithError(err).Warning("Error decoding json file for resource list, trying resource")

@@ -1,7 +1,7 @@
 package onprem
 
 import (
-	"io/ioutil"
+	"io"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -24,7 +24,7 @@ var _ = Describe("test event extractor", func() {
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 
 		extractor = &EventExtractor{
 			logger:           logger,

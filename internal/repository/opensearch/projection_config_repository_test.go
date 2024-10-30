@@ -2,7 +2,7 @@ package opensearch
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -28,7 +28,7 @@ func getMockOpensearchClient(mockResponseBody string, statusCode int) *opensearc
 	transport := MockTransport{
 		Response: &http.Response{
 			StatusCode: statusCode,
-			Body:       ioutil.NopCloser(strings.NewReader(mockResponseBody)),
+			Body:       io.NopCloser(strings.NewReader(mockResponseBody)),
 		},
 	}
 	transport.RoundTripFn = func(req *http.Request) (*http.Response, error) { return transport.Response, nil }
@@ -42,7 +42,7 @@ func getMockOpensearchClient(mockResponseBody string, statusCode int) *opensearc
 
 func getProjectionConfigRepoWithMockOpensearchResponse(mockResponse string, mockStatus int) *ProjectionConfigRepository {
 	logger := logrus.New()
-	logger.Out = ioutil.Discard
+	logger.Out = io.Discard
 	mockOpensearchClient := getMockOpensearchClient(mockResponse, mockStatus)
 	return &ProjectionConfigRepository{
 		logger:           logger,
