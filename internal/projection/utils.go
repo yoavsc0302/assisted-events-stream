@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger, ackChannel chan kafka.Message) *EnrichedEventsProjection {
+func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger, ackChannel chan kafka.Message) (*EnrichedEventsProjection, error) {
 	enrichedEventRepository := opensearch_repo.NewEnrichedEventRepositoryFromEnv(logger, ackChannel)
 	snapshotRepository := redis_repo.NewSnapshotRepositoryFromEnv(ctx, logger)
 	return NewEnrichedEventsProjection(

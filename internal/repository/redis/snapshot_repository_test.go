@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"testing"
 
@@ -27,7 +27,7 @@ var _ = Describe("Setting objects", func() {
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 		ctx = context.Background()
 		redis, mock = redismock.NewClientMock()
 		snapshotRepo = &SnapshotRepository{

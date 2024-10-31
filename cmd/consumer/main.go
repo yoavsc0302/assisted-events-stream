@@ -24,7 +24,10 @@ func main() {
 		log.WithError(err).Fatal("Could not connect to kafka")
 	}
 
-	projection := projection.NewEnrichedEventsProjectionFromEnv(ctx, log, ackChannel)
+	projection, err := projection.NewEnrichedEventsProjectionFromEnv(ctx, log, ackChannel)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create projection")
+	}
 
 	intChannel := make(chan os.Signal, 1)
 

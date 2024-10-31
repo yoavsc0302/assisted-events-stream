@@ -1,6 +1,6 @@
 module github.com/openshift-assisted/assisted-events-streams
 
-go 1.18
+go 1.21
 
 require (
 	github.com/go-openapi/strfmt v0.21.7

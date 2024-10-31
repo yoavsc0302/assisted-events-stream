@@ -2,7 +2,8 @@ package projection
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -32,7 +33,7 @@ var _ = Describe("Process message", func() {
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 		ctx = context.Background()
 		ctrl = gomock.NewController(GinkgoT())
 		mockSnapshotRepo = redis_repo.NewMockSnapshotRepositoryInterface(ctrl)
@@ -139,8 +140,128 @@ var _ = Describe("Process message", func() {
 		})
 	})
 
+	When("Some user names are excluded", func() {
+		BeforeEach(func() {
+			projection.excludedUserNames = []string{"excluded user"}
+		})
+
+		Context("Pushing an event from another user", func() {
+			BeforeEach(func() {
+				mockCluster = map[string]interface{}{
+					"id":        "41355074-0b4a-4774-99f5-50c7bed8bb07",
+					"foo":       "bar",
+					"user_name": "another user",
+				}
+			})
+
+			It("shouldn't change anything", func() {
+				eventPayload := getBasicClusterEventPayload()
+				msg := getKafkaMessage(eventPayload)
+
+				mockSnapshotRepo.EXPECT().GetCluster(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(1).Return(mockCluster, nil)
+				mockSnapshotRepo.EXPECT().GetHosts(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(1).Return(mockHosts, nil)
+				mockSnapshotRepo.EXPECT().GetInfraEnvs(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(1).Return(mockInfraEnvs, nil)
+				mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), mockCluster, mockHosts, mockInfraEnvs).Times(1).Return(mockEnrichedEvent)
+
+				mockEnrichedEventRepo.EXPECT().Store(ctx, mockEnrichedEvent, msg).Times(1).Return(nil)
+				err := projection.ProcessMessage(ctx, msg)
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("Pushing an event from the excluded user", func() {
+			BeforeEach(func() {
+				mockCluster = map[string]interface{}{
+					"id":        "41355074-0b4a-4774-99f5-50c7bed8bb07",
+					"foo":       "bar",
+					"user_name": "excluded user",
+				}
+			})
+
+			It("should not process the message further", func() {
+				eventPayload := getBasicClusterEventPayload()
+				msg := getKafkaMessage(eventPayload)
+
+				mockSnapshotRepo.EXPECT().GetCluster(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(1).Return(mockCluster, nil)
+				mockSnapshotRepo.EXPECT().GetHosts(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(0)
+				mockSnapshotRepo.EXPECT().GetInfraEnvs(ctx, "3a930088-e49d-4584-bbd3-54a568dbe833").Times(0)
+				mockEnricher.EXPECT().GetEnrichedEvent(gomock.Any(), mockCluster, mockHosts, mockInfraEnvs).Times(0)
+
+				mockEnrichedEventRepo.EXPECT().Store(ctx, mockEnrichedEvent, msg).Times(0)
+				err := projection.ProcessMessage(ctx, msg)
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+
 	AfterEach(func() {
 		ctrl.Finish()
+	})
+})
+
+var _ = Describe("Create Projection", func() {
+	When("No user names are excluded", func() {
+		os.Unsetenv("EXCLUDED_USER_NAMES")
+
+		Context("Creating a new enriched event projection", func() {
+			projection, err := NewEnrichedEventsProjection(nil, nil, nil, nil)
+
+			It("Should not fail", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("Should create a projection with an empty excluded user name list", func() {
+				Expect(len(projection.excludedUserNames)).To(Equal(0))
+			})
+		})
+	})
+
+	When("EXCLUDED_USER_NAMES is set but empty", func() {
+		os.Setenv("EXCLUDED_USER_NAMES", "")
+
+		Context("Creating a new enriched event projection", func() {
+			projection, err := NewEnrichedEventsProjection(nil, nil, nil, nil)
+
+			It("Should not fail", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("Should create a projection with an empty excluded user name list", func() {
+				Expect(len(projection.excludedUserNames)).To(Equal(0))
+			})
+		})
+	})
+
+	When("1 user name is excluded", func() {
+		os.Setenv("EXCLUDED_USER_NAMES", "my user")
+
+		Context("Creating a new enriched event projection", func() {
+			projection, err := NewEnrichedEventsProjection(nil, nil, nil, nil)
+
+			It("Should not fail", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("Should create a projection with 1 excluded user name", func() {
+				Expect(projection.excludedUserNames).To(Equal([]string{"my user"}))
+			})
+		})
+	})
+
+	When("several user names are excluded", func() {
+		os.Setenv("EXCLUDED_USER_NAMES", "test 1,test2,  test  3 éè, test4")
+
+		Context("Creating a new enriched event projection", func() {
+			projection, err := NewEnrichedEventsProjection(nil, nil, nil, nil)
+
+			It("Should not fail", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("Should create a projection with 3 excluded user names", func() {
+				Expect(projection.excludedUserNames).To(ConsistOf([]string{"test 1", "test2", "  test  3 éè", " test4"}))
+			})
+		})
 	})
 })
 

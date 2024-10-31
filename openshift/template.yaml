@@ -606,6 +606,8 @@ objects:
               secretKeyRef:
                 key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
                 name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
+          - name: EXCLUDED_USER_NAMES
+            value: ${EXCLUDED_USER_NAMES}
           image: ${IMAGE_NAME}:${IMAGE_TAG}
           imagePullPolicy: ${IMAGE_PULL_POLICY}
           name: projection
@@ -981,3 +983,5 @@ parameters:
   value: "1000"
 - name: REDIS_PVC_NAME
   value: redis-data
+- name: EXCLUDED_USER_NAMES
+  value: ""

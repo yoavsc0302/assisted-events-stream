@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
+	"github.com/kelseyhightower/envconfig"
 	"github.com/openshift-assisted/assisted-events-streams/internal/projection/process"
 	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
 	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
@@ -18,6 +20,8 @@ const (
 	ClusterState  = "ClusterState"
 	HostState     = "HostState"
 	InfraEnvState = "InfraEnv"
+
+	userName = "user_name"
 )
 
 //go:generate mockgen -source=enriched_event_projection.go -package=projection -destination=mock_event_enricher.go
@@ -26,23 +30,37 @@ type EventEnricherInterface interface {
 	GetEnrichedEvent(event *types.Event, cluster map[string]interface{}, hosts []map[string]interface{}, infraEnvs []map[string]interface{}) *types.EnrichedEvent
 }
 
+type ProjectionConfig struct {
+	ExcludedUserNames []string `envconfig:"EXCLUDED_USER_NAMES" default:""`
+}
+
 type EnrichedEventsProjection struct {
 	logger                  *logrus.Logger
 	eventEnricher           EventEnricherInterface
 	snapshotRepository      redis_repo.SnapshotRepositoryInterface
 	enrichedEventRepository opensearch_repo.EnrichedEventRepositoryInterface
 	ackChannel              chan kafka.Message
+	excludedUserNames       []string
 }
 
-func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface, ackChannel chan kafka.Message) *EnrichedEventsProjection {
+func NewEnrichedEventsProjection(logger *logrus.Logger, snapshotRepo redis_repo.SnapshotRepositoryInterface, enrichedEventRepo opensearch_repo.EnrichedEventRepositoryInterface, ackChannel chan kafka.Message) (*EnrichedEventsProjection, error) {
 	eventEnricher := process.NewEventEnricher(logger)
+
+	config := ProjectionConfig{}
+
+	err := envconfig.Process("", &config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse env: %w", err)
+	}
+
 	return &EnrichedEventsProjection{
 		logger:                  logger,
 		eventEnricher:           eventEnricher,
 		snapshotRepository:      snapshotRepo,
 		enrichedEventRepository: enrichedEventRepo,
 		ackChannel:              ackChannel,
-	}
+		excludedUserNames:       config.ExcludedUserNames,
+	}, nil
 }
 
 func (p *EnrichedEventsProjection) Close(ctx context.Context) {
@@ -78,7 +96,7 @@ func (p *EnrichedEventsProjection) ProcessEvent(ctx context.Context, event *type
 	case InfraEnvState:
 		err = p.ProcessInfraEnvState(ctx, event)
 	default:
-		return fmt.Errorf("Unknown event name: %s (%s)", event.Name, event.Payload)
+		return fmt.Errorf("unknown event name: %s (%s)", event.Name, event.Payload)
 	}
 	if event.Name != ClusterEvent {
 		p.ackMsg(msg)
@@ -110,6 +128,15 @@ func (p *EnrichedEventsProjection) ProcessClusterEvent(ctx context.Context, even
 		p.logger.WithFields(logrus.Fields{
 			"cluster_id": clusterID,
 		}).WithError(err).Warn("Could not retrieve cluster")
+	}
+
+	// Hack: Don't process further events from specific users
+	if p.skipEvent(cluster) {
+		p.logger.WithFields(logrus.Fields{
+			"cluster_id": clusterID,
+		}).Debug("skipping event")
+
+		return nil
 	}
 
 	hosts, err := p.snapshotRepository.GetHosts(ctx, clusterID)
@@ -180,6 +207,20 @@ func (p *EnrichedEventsProjection) ProcessInfraEnvState(ctx context.Context, eve
 		"cluster_id":   clusterID,
 	}).Debug("processing infra-env state")
 	return p.snapshotRepository.SetInfraEnv(ctx, clusterID, infraEnvID, event)
+}
+
+func (p *EnrichedEventsProjection) skipEvent(cluster map[string]interface{}) bool {
+	name, ok := cluster[userName]
+	if !ok {
+		return false
+	}
+
+	nameStr, ok := name.(string)
+	if !ok {
+		return false
+	}
+
+	return slices.Contains(p.excludedUserNames, nameStr)
 }
 
 func getEventFromMessage(msg *kafka.Message) (*types.Event, error) {

@@ -1,7 +1,7 @@
 package process
 
 import (
-	"io/ioutil"
+	"io"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -16,7 +16,7 @@ var _ = Describe("Process message", func() {
 	)
 	BeforeEach(func() {
 		logger = logrus.New()
-		logger.Out = ioutil.Discard
+		logger.Out = io.Discard
 		enricher = NewEventEnricher(logger)
 	})
 	When("Enrich a cluster event with fields to be transformed", func() {
