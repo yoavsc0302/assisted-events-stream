@@ -41,6 +41,10 @@ deploy-all: kind-create-cluster kind-load-docker ## Deploy locally all necessary
 generate-template: ## Generate template in openshift/template.yaml
 	oc kustomize manifest/overlays/production/ > openshift/template.yaml
 
+.PHONY: check-template-generation
+check-template-generation: generate-template
+	@git diff --exit-code openshift/template.yaml
+
 .PHONY: generate-mocks
 generate-mocks: ## Generate mocks
 	find -name 'mock_*' -delete
