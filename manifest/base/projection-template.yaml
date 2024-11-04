@@ -185,6 +185,8 @@ parameters:
   value: "1000"
 - name: REDIS_PVC_NAME
   value: redis-data
+- name: EXCLUDED_USER_NAMES
+  value: ""
 objects:
 - apiVersion: v1
   kind: ConfigMap
@@ -415,6 +417,8 @@ objects:
               secretKeyRef:
                 key: ${OPENSEARCH_PASSWORD_SECRET_KEY}
                 name: ${OPENSEARCH_PASSWORD_SECRET_NAME}
+          - name: EXCLUDED_USER_NAMES
+            value: ${EXCLUDED_USER_NAMES}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
