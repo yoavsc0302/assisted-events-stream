@@ -1,0 +1,10 @@
+{
+    "name": "InfraEnv",
+    "payload": {
+        "id": "my-infra-env-id",
+        "cluster_id": "my-cluster-id"
+    },
+    "metadata": {
+        
+    }
+}
