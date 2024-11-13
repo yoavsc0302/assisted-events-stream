@@ -1,0 +1,27 @@
+{
+    "name": "HostState",
+    "payload": {
+        "id": "my-host-id",
+        "cluster_id": "my-cluster-id",
+
+        "ID": 3375324,
+        "CreatedAt": "2023-01-20T02:19:23.972689685Z",
+        "UpdatedAt": "2023-01-20T02:19:23.972689685Z",
+        "DeletedAt": null,
+        "category": "user",
+        "event_time": "2023-01-20T02:19:23.972Z",
+        "message": "Successfully registered cluster",
+        "name": "cluster_registration_succeeded",
+        "request_id": "0b22419a-5490-4cae-9e75-cb3ff3a8007f",
+        "severity": "info"
+    },
+    "metadata": {
+        "versions": {
+            "SelfVersion": "quay.io/app-sre/assisted-service:3c49745",
+            "AgentDockerImg": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-agent-rhel8:latest",
+            "InstallerImage": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-rhel8:latest",
+            "ControllerImage": "registry-proxy.engineering.redhat.com/rh-osbs/openshift4-assisted-installer-reporter-rhel8:latest",
+            "ReleaseTag": "master"
+        }
+    }
+}

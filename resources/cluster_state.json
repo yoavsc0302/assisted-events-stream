@@ -1,0 +1,9 @@
+{
+    "name": "ClusterState",
+    "payload": {
+        "id": "my-cluster-id"
+    },
+    "metadata": {
+
+    }
+}

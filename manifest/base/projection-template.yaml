@@ -89,8 +89,6 @@ parameters:
   value: "2048Mi"
 - name: OPENSEARCH_CURATOR_MEMORY_REQUEST
   value: "1024Mi"
-- name: OPENSEARCH_CURATOR_LOGLEVEL
-  value: "INFO"
 - name: OPENSEARCH_CURATOR_SSL_NO_VALIDATE
   value: "True"
 - name: OPENSEARCH_CURATOR_DELETE_INDICES_AFTER_MONTHS
@@ -109,8 +107,6 @@ parameters:
   value: password
 - name: KAFKA_SASL_MECHANISM
   value: "PLAIN"
-- name: LOG_LEVEL
-  value: info
 - name: ZOOKEEPER_TLS
   value: "false"
 - name: ZOOKEEPER_CONNECT_STRING_SECRET_KEY
@@ -167,8 +163,6 @@ parameters:
   value: "256Mi"
 - name: ONPREM_KAFKA_GROUP_ID
   value: "onprem-hydrator-dev"
-- name: ONPREM_LOGLEVEL
-  value: "info"
 - name: ONPREM_REPLICAS_COUNT
   value: "1"
 - name: ONPREM_KAFKA_CREDENTIALS_SECRETNAME

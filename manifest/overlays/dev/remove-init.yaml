@@ -1,0 +1,6 @@
+# hardcoding 36 is fragile, so test it hasn't changed
+- op: test
+  path: /objects/36/metadata/name
+  value: enriched-event-projection
+- op: remove
+  path: /objects/36/spec/template/spec/initContainers
