@@ -7,7 +7,7 @@ components:
 - ../../components/kafka
 - ../../components/opensearch
 - ../../components/namespace
-- ../../components/redis
+- ../../components/valkey
 - ../../components/opensearch-curator
 
 patches:
@@ -16,7 +16,7 @@ patches:
     kind: Template
     version: v1
     name: assisted-events-stream-projection
-  path: redis-secret.yaml
+  path: valkey-secret.yaml
 - target:
     group: template.openshift.io
     kind: Template

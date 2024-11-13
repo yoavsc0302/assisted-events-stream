@@ -1,0 +1,284 @@
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: valkey-configuration
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    data:
+      valkey.conf: |-
+        # User-supplied common configuration:
+        # Enable AOF
+        appendonly yes
+        # Disable RDB persistence, AOF persistence already enabled.
+        save ""
+        # End of common configuration
+      master.conf: |-
+        dir /data
+        # User-supplied master configuration:
+        rename-command FLUSHDB ""
+        rename-command FLUSHALL ""
+        # End of master configuration
+      replica.conf: |-
+        dir /data
+        slave-read-only yes
+        # User-supplied replica configuration:
+        rename-command FLUSHDB ""
+        rename-command FLUSHALL ""
+        # End of replica configuration
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: valkey-health
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    data:
+      ping_readiness_local.sh: |-
+        #!/bin/bash
+
+        [[ -f $VALKEY_PASSWORD_FILE ]] && export VALKEY_PASSWORD="$(< "${VALKEY_PASSWORD_FILE}")"
+        [[ -n "$VALKEY_PASSWORD" ]] && export REDISCLI_AUTH="$VALKEY_PASSWORD"
+        response=$(
+          timeout -s 3 $1 \
+          valkey-cli \
+            -h localhost \
+            -p $VALKEY_PORT \
+            ping
+        )
+        if [ "$?" -eq "124" ]; then
+          echo "Timed out"
+          exit 1
+        fi
+        if [ "$response" != "PONG" ]; then
+          echo "$response"
+          exit 1
+        fi
+      ping_liveness_local.sh: |-
+        #!/bin/bash
+
+        [[ -f $VALKEY_PASSWORD_FILE ]] && export VALKEY_PASSWORD="$(< "${VALKEY_PASSWORD_FILE}")"
+        [[ -n "$VALKEY_PASSWORD" ]] && export REDISCLI_AUTH="$VALKEY_PASSWORD"
+        response=$(
+          timeout -s 3 $1 \
+          valkey-cli \
+            -h localhost \
+            -p $VALKEY_PORT \
+            ping
+        )
+        if [ "$?" -eq "124" ]; then
+          echo "Timed out"
+          exit 1
+        fi
+        responseFirstWord=$(echo $response | head -n1 | awk '{print $1;}')
+        if [ "$response" != "PONG" ] && [ "$responseFirstWord" != "LOADING" ] && [ "$responseFirstWord" != "MASTERDOWN" ]; then
+          echo "$response"
+          exit 1
+        fi
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: valkey-scripts
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    data:
+      start-master.sh: |
+        #!/bin/bash
+
+        mkdir -p /etc/valkey/conf
+
+        if [[ ! -f /etc/valkey/conf/master.conf ]];then
+            cp /opt/valkey/mounted-etc/master.conf /etc/valkey/conf/master.conf
+        fi
+        if [[ ! -f /etc/valkey/conf/valkey.conf ]];then
+            cp /opt/valkey/mounted-etc/valkey.conf /etc/valkey/conf/valkey.conf
+        fi
+
+        ARGS=("--port" "${VALKEY_PORT}")
+        ARGS+=("--requirepass" "${VALKEY_PASSWORD}")
+        ARGS+=("--masterauth" "${VALKEY_PASSWORD}")
+        ARGS+=("--include" "/etc/valkey/conf/valkey.conf")
+        ARGS+=("--include" "/etc/valkey/conf/master.conf")
+
+        exec valkey-server "${ARGS[@]}"
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: valkey-headless
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    spec:
+      type: ClusterIP
+      clusterIP: None
+      ports:
+        - name: tcp-valkey
+          port: 6379
+          targetPort: valkey
+      selector:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: valkey
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    spec:
+      type: ClusterIP
+      internalTrafficPolicy: Cluster
+      sessionAffinity: None
+      ports:
+        - name: tcp-valkey
+          port: 6379
+          targetPort: valkey
+          nodePort: null
+      selector:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+- op: add
+  path: /objects/0
+  value:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: valkey
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: assisted-events-streams
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: valkey
+          app.kubernetes.io/instance: assisted-events-streams
+      serviceName: valkey-headless
+      updateStrategy:
+        rollingUpdate: {}
+        type: RollingUpdate
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: valkey
+            app.kubernetes.io/instance: assisted-events-streams
+        spec:
+          affinity:
+            podAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        app.kubernetes.io/name: enriched-event-projection
+                    namespaces:
+                      - "${NAMESPACE}"
+                    topologyKey: kubernetes.io/hostname
+                  weight: 1
+          terminationGracePeriodSeconds: 30
+          containers:
+            - name: valkey
+              image: ${VALKEY_IMAGE_NAME}:${VALKEY_IMAGE_TAG}
+              imagePullPolicy: "IfNotPresent"
+              securityContext:
+                runAsNonRoot: true
+              command:
+                - /bin/bash
+              args:
+                - -c
+                - /opt/valkey/scripts/start-scripts/start-master.sh
+              env:
+                - name: VALKEY_REPLICATION_MODE
+                  value: master
+                - name: ALLOW_EMPTY_PASSWORD
+                  value: "no"
+                - name: VALKEY_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${VALKEY_CREDENTIALS_SECRETNAME}
+                      key: password
+                - name: VALKEY_TLS_ENABLED
+                  value: "no"
+                - name: VALKEY_PORT
+                  value: "6379"
+              ports:
+                - name: valkey
+                  containerPort: 6379
+              resources:
+                limits: {}
+                requests: {}
+              livenessProbe:
+                initialDelaySeconds: 20
+                periodSeconds: 5
+                # One second longer than command timeout should prevent generation of zombie processes.
+                timeoutSeconds: 6
+                successThreshold: 1
+                failureThreshold: 5
+                exec:
+                  command:
+                    - sh
+                    - -c
+                    - /health/ping_liveness_local.sh 5
+              readinessProbe:
+                initialDelaySeconds: 20
+                periodSeconds: 5
+                timeoutSeconds: 2
+                successThreshold: 1
+                failureThreshold: 5
+                exec:
+                  command:
+                    - sh
+                    - -c
+                    - /health/ping_readiness_local.sh 1
+              volumeMounts:
+                - name: start-scripts
+                  mountPath: /opt/valkey/scripts/start-scripts
+                - name: ${VALKEY_PVC_NAME}
+                  mountPath: /data
+                - name: config
+                  mountPath: /opt/valkey/mounted-etc
+                - name: health
+                  mountPath: /health
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: start-scripts
+              configMap:
+                name: valkey-scripts
+                defaultMode: 0755
+            - name: config
+              configMap:
+                name: valkey-configuration
+            - name: health
+              configMap:
+                name: valkey-health
+                defaultMode: 0755
+            - name: tmp
+              emptyDir: {}
+      volumeClaimTemplates:
+        - metadata:
+            name: ${VALKEY_PVC_NAME}
+            labels:
+              app.kubernetes.io/name: valkey
+              app.kubernetes.io/instance: assisted-events-streams
+          spec:
+            accessModes:
+              - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: "${VALKEY_STORAGE}"
