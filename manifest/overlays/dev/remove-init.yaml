@@ -1,6 +1,6 @@
-# hardcoding 36 is fragile, so test it hasn't changed
+# hardcoding 35 is fragile, so test it hasn't changed
 - op: test
-  path: /objects/36/metadata/name
+  path: /objects/35/metadata/name
   value: enriched-event-projection
 - op: remove
-  path: /objects/36/spec/template/spec/initContainers
+  path: /objects/35/spec/template/spec/initContainers

@@ -116,20 +116,20 @@ objects:
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis
+      app.kubernetes.io/name: valkey
+    name: valkey
   spec:
     replicas: 1
     selector:
       matchLabels:
         app.kubernetes.io/instance: assisted-events-streams
-        app.kubernetes.io/name: redis
-    serviceName: assisted-events-streams-redis-headless
+        app.kubernetes.io/name: valkey
+    serviceName: valkey-headless
     template:
       metadata:
         labels:
           app.kubernetes.io/instance: assisted-events-streams
-          app.kubernetes.io/name: redis
+          app.kubernetes.io/name: valkey
       spec:
         affinity:
           podAffinity:
@@ -145,26 +145,24 @@ objects:
         containers:
         - args:
           - -c
-          - /opt/bitnami/scripts/start-scripts/start-master.sh
+          - /opt/valkey/scripts/start-scripts/start-master.sh
           command:
           - /bin/bash
           env:
-          - name: BITNAMI_DEBUG
-            value: "false"
-          - name: REDIS_REPLICATION_MODE
+          - name: VALKEY_REPLICATION_MODE
             value: master
           - name: ALLOW_EMPTY_PASSWORD
             value: "no"
-          - name: REDIS_PASSWORD
+          - name: VALKEY_PASSWORD
             valueFrom:
               secretKeyRef:
                 key: password
-                name: ${REDIS_CREDENTIALS_SECRETNAME}
-          - name: REDIS_TLS_ENABLED
+                name: ${VALKEY_CREDENTIALS_SECRETNAME}
+          - name: VALKEY_TLS_ENABLED
             value: "no"
-          - name: REDIS_PORT
+          - name: VALKEY_PORT
             value: "6379"
-          image: ${REDIS_IMAGE_NAME}:${REDIS_IMAGE_TAG}
+          image: ${VALKEY_IMAGE_NAME}:${VALKEY_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
@@ -177,10 +175,10 @@ objects:
             periodSeconds: 5
             successThreshold: 1
             timeoutSeconds: 6
-          name: redis
+          name: valkey
           ports:
           - containerPort: 6379
-            name: redis
+            name: valkey
           readinessProbe:
             exec:
               command:
@@ -198,64 +196,29 @@ objects:
           securityContext:
             runAsNonRoot: true
           volumeMounts:
-          - mountPath: /opt/bitnami/scripts/start-scripts
+          - mountPath: /opt/valkey/scripts/start-scripts
             name: start-scripts
+          - mountPath: /data
+            name: ${VALKEY_PVC_NAME}
+          - mountPath: /opt/valkey/mounted-etc
+            name: config
           - mountPath: /health
             name: health
-          - mountPath: /data
-            name: ${REDIS_PVC_NAME}
-            subPath: null
-          - mountPath: /opt/bitnami/redis/mounted-etc
-            name: config
-          - mountPath: /opt/bitnami/redis/etc/
-            name: redis-tmp-conf
           - mountPath: /tmp
             name: tmp
-        - command:
-          - /bin/bash
-          - -c
-          - |
-            if [[ -f '/secrets/redis-password' ]]; then
-            export REDIS_PASSWORD=$(cat /secrets/redis-password)
-            fi
-            redis_exporter
-          env:
-          - name: REDIS_ALIAS
-            value: assisted-events-streams-redis
-          - name: REDIS_USER
-            value: default
-          - name: REDIS_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: password
-                name: ${REDIS_CREDENTIALS_SECRETNAME}
-          image: ${REDIS_EXPORTER_IMAGE_NAME}:${REDIS_EXPORTER_IMAGE_TAG}
-          imagePullPolicy: IfNotPresent
-          name: metrics
-          ports:
-          - containerPort: 9121
-            name: metrics
-          resources:
-            limits: {}
-            requests: {}
-          securityContext:
-            runAsNonRoot: true
-          volumeMounts: null
         terminationGracePeriodSeconds: 30
         volumes:
         - configMap:
             defaultMode: 493
-            name: assisted-events-streams-redis-scripts
+            name: valkey-scripts
           name: start-scripts
         - configMap:
-            defaultMode: 493
-            name: assisted-events-streams-redis-health
-          name: health
-        - configMap:
-            name: assisted-events-streams-redis-configuration
+            name: valkey-configuration
           name: config
-        - emptyDir: {}
-          name: redis-tmp-conf
+        - configMap:
+            defaultMode: 493
+            name: valkey-health
+          name: health
         - emptyDir: {}
           name: tmp
     updateStrategy:
@@ -265,49 +228,31 @@ objects:
     - metadata:
         labels:
           app.kubernetes.io/instance: assisted-events-streams
-          app.kubernetes.io/name: redis
-        name: ${REDIS_PVC_NAME}
+          app.kubernetes.io/name: valkey
+        name: ${VALKEY_PVC_NAME}
       spec:
         accessModes:
         - ReadWriteOnce
         resources:
           requests:
-            storage: ${REDIS_STORAGE}
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      app.kubernetes.io/component: metrics
-      app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis-metrics
-  spec:
-    ports:
-    - name: http-metrics
-      port: 9121
-      protocol: TCP
-      targetPort: metrics
-    selector:
-      app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    type: ClusterIP
+            storage: ${VALKEY_STORAGE}
 - apiVersion: v1
   kind: Service
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis
+      app.kubernetes.io/name: valkey
+    name: valkey
   spec:
     internalTrafficPolicy: Cluster
     ports:
-    - name: tcp-redis
+    - name: tcp-valkey
       nodePort: null
       port: 6379
-      targetPort: redis
+      targetPort: valkey
     selector:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
+      app.kubernetes.io/name: valkey
     sessionAffinity: None
     type: ClusterIP
 - apiVersion: v1
@@ -315,54 +260,57 @@ objects:
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis-headless
+      app.kubernetes.io/name: valkey
+    name: valkey-headless
   spec:
     clusterIP: None
     ports:
-    - name: tcp-redis
+    - name: tcp-valkey
       port: 6379
-      targetPort: redis
+      targetPort: valkey
     selector:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
+      app.kubernetes.io/name: valkey
     type: ClusterIP
 - apiVersion: v1
   data:
     start-master.sh: |
       #!/bin/bash
 
-      [[ -f $REDIS_PASSWORD_FILE ]] && export REDIS_PASSWORD="$(< "${REDIS_PASSWORD_FILE}")"
-      if [[ ! -f /opt/bitnami/redis/etc/master.conf ]];then
-          cp /opt/bitnami/redis/mounted-etc/master.conf /opt/bitnami/redis/etc/master.conf
+      mkdir -p /etc/valkey/conf
+
+      if [[ ! -f /etc/valkey/conf/master.conf ]];then
+          cp /opt/valkey/mounted-etc/master.conf /etc/valkey/conf/master.conf
       fi
-      if [[ ! -f /opt/bitnami/redis/etc/redis.conf ]];then
-          cp /opt/bitnami/redis/mounted-etc/redis.conf /opt/bitnami/redis/etc/redis.conf
+      if [[ ! -f /etc/valkey/conf/valkey.conf ]];then
+          cp /opt/valkey/mounted-etc/valkey.conf /etc/valkey/conf/valkey.conf
       fi
-      ARGS=("--port" "${REDIS_PORT}")
-      ARGS+=("--requirepass" "${REDIS_PASSWORD}")
-      ARGS+=("--masterauth" "${REDIS_PASSWORD}")
-      ARGS+=("--include" "/opt/bitnami/redis/etc/redis.conf")
-      ARGS+=("--include" "/opt/bitnami/redis/etc/master.conf")
-      exec redis-server "${ARGS[@]}"
+
+      ARGS=("--port" "${VALKEY_PORT}")
+      ARGS+=("--requirepass" "${VALKEY_PASSWORD}")
+      ARGS+=("--masterauth" "${VALKEY_PASSWORD}")
+      ARGS+=("--include" "/etc/valkey/conf/valkey.conf")
+      ARGS+=("--include" "/etc/valkey/conf/master.conf")
+
+      exec valkey-server "${ARGS[@]}"
   kind: ConfigMap
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis-scripts
+      app.kubernetes.io/name: valkey
+    name: valkey-scripts
 - apiVersion: v1
   data:
     ping_liveness_local.sh: |-
       #!/bin/bash
 
-      [[ -f $REDIS_PASSWORD_FILE ]] && export REDIS_PASSWORD="$(< "${REDIS_PASSWORD_FILE}")"
-      [[ -n "$REDIS_PASSWORD" ]] && export REDISCLI_AUTH="$REDIS_PASSWORD"
+      [[ -f $VALKEY_PASSWORD_FILE ]] && export VALKEY_PASSWORD="$(< "${VALKEY_PASSWORD_FILE}")"
+      [[ -n "$VALKEY_PASSWORD" ]] && export REDISCLI_AUTH="$VALKEY_PASSWORD"
       response=$(
         timeout -s 3 $1 \
-        redis-cli \
+        valkey-cli \
           -h localhost \
-          -p $REDIS_PORT \
+          -p $VALKEY_PORT \
           ping
       )
       if [ "$?" -eq "124" ]; then
@@ -374,69 +322,16 @@ objects:
         echo "$response"
         exit 1
       fi
-    ping_liveness_local_and_master.sh: |-
-      script_dir="$(dirname "$0")"
-      exit_status=0
-      "$script_dir/ping_liveness_local.sh" $1 || exit_status=$?
-      "$script_dir/ping_liveness_master.sh" $1 || exit_status=$?
-      exit $exit_status
-    ping_liveness_master.sh: |-
-      #!/bin/bash
-
-      [[ -f $REDIS_MASTER_PASSWORD_FILE ]] && export REDIS_MASTER_PASSWORD="$(< "${REDIS_MASTER_PASSWORD_FILE}")"
-      [[ -n "$REDIS_MASTER_PASSWORD" ]] && export REDISCLI_AUTH="$REDIS_MASTER_PASSWORD"
-      response=$(
-        timeout -s 3 $1 \
-        redis-cli \
-          -h $REDIS_MASTER_HOST \
-          -p $REDIS_MASTER_PORT_NUMBER \
-          ping
-      )
-      if [ "$?" -eq "124" ]; then
-        echo "Timed out"
-        exit 1
-      fi
-      responseFirstWord=$(echo $response | head -n1 | awk '{print $1;}')
-      if [ "$response" != "PONG" ] && [ "$responseFirstWord" != "LOADING" ]; then
-        echo "$response"
-        exit 1
-      fi
     ping_readiness_local.sh: |-
       #!/bin/bash
 
-      [[ -f $REDIS_PASSWORD_FILE ]] && export REDIS_PASSWORD="$(< "${REDIS_PASSWORD_FILE}")"
-      [[ -n "$REDIS_PASSWORD" ]] && export REDISCLI_AUTH="$REDIS_PASSWORD"
+      [[ -f $VALKEY_PASSWORD_FILE ]] && export VALKEY_PASSWORD="$(< "${VALKEY_PASSWORD_FILE}")"
+      [[ -n "$VALKEY_PASSWORD" ]] && export REDISCLI_AUTH="$VALKEY_PASSWORD"
       response=$(
         timeout -s 3 $1 \
-        redis-cli \
+        valkey-cli \
           -h localhost \
-          -p $REDIS_PORT \
-          ping
-      )
-      if [ "$?" -eq "124" ]; then
-        echo "Timed out"
-        exit 1
-      fi
-      if [ "$response" != "PONG" ]; then
-        echo "$response"
-        exit 1
-      fi
-    ping_readiness_local_and_master.sh: |-
-      script_dir="$(dirname "$0")"
-      exit_status=0
-      "$script_dir/ping_readiness_local.sh" $1 || exit_status=$?
-      "$script_dir/ping_readiness_master.sh" $1 || exit_status=$?
-      exit $exit_status
-    ping_readiness_master.sh: |-
-      #!/bin/bash
-
-      [[ -f $REDIS_MASTER_PASSWORD_FILE ]] && export REDIS_MASTER_PASSWORD="$(< "${REDIS_MASTER_PASSWORD_FILE}")"
-      [[ -n "$REDIS_MASTER_PASSWORD" ]] && export REDISCLI_AUTH="$REDIS_MASTER_PASSWORD"
-      response=$(
-        timeout -s 3 $1 \
-        redis-cli \
-          -h $REDIS_MASTER_HOST \
-          -p $REDIS_MASTER_PORT_NUMBER \
+          -p $VALKEY_PORT \
           ping
       )
       if [ "$?" -eq "124" ]; then
@@ -451,8 +346,8 @@ objects:
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis-health
+      app.kubernetes.io/name: valkey
+    name: valkey-health
 - apiVersion: v1
   data:
     master.conf: |-
@@ -461,13 +356,6 @@ objects:
       rename-command FLUSHDB ""
       rename-command FLUSHALL ""
       # End of master configuration
-    redis.conf: |-
-      # User-supplied common configuration:
-      # Enable AOF https://redis.io/topics/persistence#append-only-file
-      appendonly yes
-      # Disable RDB persistence, AOF persistence already enabled.
-      save ""
-      # End of common configuration
     replica.conf: |-
       dir /data
       slave-read-only yes
@@ -475,12 +363,19 @@ objects:
       rename-command FLUSHDB ""
       rename-command FLUSHALL ""
       # End of replica configuration
+    valkey.conf: |-
+      # User-supplied common configuration:
+      # Enable AOF
+      appendonly yes
+      # Disable RDB persistence, AOF persistence already enabled.
+      save ""
+      # End of common configuration
   kind: ConfigMap
   metadata:
     labels:
       app.kubernetes.io/instance: assisted-events-streams
-      app.kubernetes.io/name: redis
-    name: assisted-events-streams-redis-configuration
+      app.kubernetes.io/name: valkey
+    name: valkey-configuration
 - apiVersion: v1
   data:
     zookeeper.config: |-
@@ -583,12 +478,12 @@ objects:
                 key: ${KAFKA_CREDENTIALS_PASSWORD_KEY}
                 name: ${KAFKA_CREDENTIALS_SECRETNAME}
           - name: REDIS_ADDRESS
-            value: ${REDIS_ADDRESS}
+            value: ${VALKEY_ADDRESS}
           - name: REDIS_PASSWORD
             valueFrom:
               secretKeyRef:
                 key: password
-                name: ${REDIS_CREDENTIALS_SECRETNAME}
+                name: ${VALKEY_CREDENTIALS_SECRETNAME}
           - name: OPENSEARCH_INDEX_PREFIX
             value: ${OPENSEARCH_INDEX_PREFIX}
           - name: OPENSEARCH_ADDRESS
@@ -794,17 +689,13 @@ parameters:
   value: info
 - name: OPENSEARCH_CURATOR_LOGLEVEL
   value: INFO
-- name: REDIS_EXPORTER_IMAGE_TAG
-  value: 1.37.0-debian-10-r63
-- name: REDIS_EXPORTER_IMAGE_NAME
-  value: quay.io/edge-infrastructure/redis-exporter
-- name: REDIS_IMAGE_TAG
-  value: 6.2.7-debian-10-r23
-- name: REDIS_IMAGE_NAME
-  value: quay.io/edge-infrastructure/redis
-- name: REDIS_PVC_NAME
-  value: redis-data
-- name: REDIS_STORAGE
+- name: VALKEY_IMAGE_TAG
+  value: bf91acf0827dc5db216164aafe3d34beb245dcec
+- name: VALKEY_IMAGE_NAME
+  value: quay.io/sclorg/valkey-7-c10s
+- name: VALKEY_PVC_NAME
+  value: valkey-data
+- name: VALKEY_STORAGE
   value: 100Gi
 - name: IMAGE_PULL_POLICY
   value: Always
@@ -849,9 +740,9 @@ parameters:
   value: events-stream-integration
 - name: KAFKA_GROUP_ID
   value: enriched-event-projection
-- name: REDIS_ADDRESS
-  value: assisted-events-streams-redis:6379
-- name: REDIS_CREDENTIALS_SECRETNAME
+- name: VALKEY_ADDRESS
+  value: valkey:6379
+- name: VALKEY_CREDENTIALS_SECRETNAME
   value: redis-credentials
 - name: OPENSEARCH_USER_SECRET_NAME
   value: elastic-master-credentials
@@ -981,7 +872,7 @@ parameters:
   value: "1000"
 - name: ONPREM_EVENT_CHANNEL_BUFFER_SIZE
   value: "1000"
-- name: REDIS_PVC_NAME
-  value: redis-data
+- name: VALKEY_PVC_NAME
+  value: valkey-data
 - name: EXCLUDED_USER_NAMES
   value: ""

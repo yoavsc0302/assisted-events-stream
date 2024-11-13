@@ -45,10 +45,10 @@ parameters:
   value: "events-stream-integration"
 - name: KAFKA_GROUP_ID
   value: "enriched-event-projection"
-- name: REDIS_ADDRESS
-  value: "assisted-events-streams-redis:6379"
-- name: REDIS_CREDENTIALS_SECRETNAME
-  value: redis-credentials
+- name: VALKEY_ADDRESS
+  value: "valkey:6379"
+- name: VALKEY_CREDENTIALS_SECRETNAME
+  value: redis-credentials # Still redis for prod compatibility
 - name: OPENSEARCH_USER_SECRET_NAME
   value: elastic-master-credentials
 - name: OPENSEARCH_USER_SECRET_KEY
@@ -177,8 +177,8 @@ parameters:
   value: "1000"
 - name: ONPREM_EVENT_CHANNEL_BUFFER_SIZE
   value: "1000"
-- name: REDIS_PVC_NAME
-  value: redis-data
+- name: VALKEY_PVC_NAME
+  value: valkey-data
 - name: EXCLUDED_USER_NAMES
   value: ""
 objects:
@@ -388,11 +388,11 @@ objects:
                 name: ${KAFKA_CREDENTIALS_SECRETNAME}
                 key: ${KAFKA_CREDENTIALS_PASSWORD_KEY}
           - name: REDIS_ADDRESS
-            value: ${REDIS_ADDRESS}
+            value: ${VALKEY_ADDRESS}
           - name: REDIS_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: ${REDIS_CREDENTIALS_SECRETNAME}
+                name: ${VALKEY_CREDENTIALS_SECRETNAME}
                 key: password
           - name: OPENSEARCH_INDEX_PREFIX
             value: "${OPENSEARCH_INDEX_PREFIX}"

@@ -18,7 +18,7 @@ func NewRedisClientFromEnv(ctx context.Context, logger *logrus.Logger) *redis.Cl
 	if err := client.Ping(ctx).Err(); err != nil {
 		logger.WithFields(logrus.Fields{
 			"addr": addr,
-		}).WithError(err).Fatal("could not ping redis server")
+		}).WithError(err).Fatal("could not ping redis compatible server")
 	}
 	return client
 }

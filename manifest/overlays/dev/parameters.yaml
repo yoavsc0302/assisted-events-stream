@@ -6,33 +6,23 @@
 - op: add
   path: /parameters/0
   value:
-    name: REDIS_STORAGE
+    name: VALKEY_STORAGE
     value: 8Gi
 - op: add
   path: /parameters/0
   value:
-    name: REDIS_PVC_NAME
-    value: redis-data
+    name: VALKEY_PVC_NAME
+    value: valkey-data
 - op: add
   path: /parameters/0
   value:
-    name: REDIS_IMAGE_NAME
-    value: quay.io/edge-infrastructure/redis
+    name: VALKEY_IMAGE_NAME
+    value: quay.io/sclorg/valkey-7-c10s
 - op: add
   path: /parameters/0
   value:
-    name: REDIS_IMAGE_TAG
-    value: 6.2.7-debian-10-r23
-- op: add
-  path: /parameters/0
-  value:
-    name: REDIS_EXPORTER_IMAGE_NAME
-    value: quay.io/edge-infrastructure/redis-exporter
-- op: add
-  path: /parameters/0
-  value:
-    name: REDIS_EXPORTER_IMAGE_TAG
-    value: 1.37.0-debian-10-r63
+    name: VALKEY_IMAGE_TAG
+    value: bf91acf0827dc5db216164aafe3d34beb245dcec
 - op: add
   path: /parameters/0
   value:

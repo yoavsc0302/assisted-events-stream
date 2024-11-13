@@ -7,4 +7,4 @@ patches:
     kind: Template
     version: v1
     name: assisted-events-stream-projection
-  path: redis.yaml
+  path: valkey.yaml
