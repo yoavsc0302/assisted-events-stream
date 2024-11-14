@@ -277,20 +277,11 @@ objects:
     start-master.sh: |
       #!/bin/bash
 
-      mkdir -p /etc/valkey/conf
-
-      if [[ ! -f /etc/valkey/conf/master.conf ]];then
-          cp /opt/valkey/mounted-etc/master.conf /etc/valkey/conf/master.conf
-      fi
-      if [[ ! -f /etc/valkey/conf/valkey.conf ]];then
-          cp /opt/valkey/mounted-etc/valkey.conf /etc/valkey/conf/valkey.conf
-      fi
-
       ARGS=("--port" "${VALKEY_PORT}")
       ARGS+=("--requirepass" "${VALKEY_PASSWORD}")
       ARGS+=("--masterauth" "${VALKEY_PASSWORD}")
-      ARGS+=("--include" "/etc/valkey/conf/valkey.conf")
-      ARGS+=("--include" "/etc/valkey/conf/master.conf")
+      ARGS+=("--include" "/opt/valkey/mounted-etc/valkey.conf")
+      ARGS+=("--include" "/opt/valkey/mounted-etc/master.conf")
 
       exec valkey-server "${ARGS[@]}"
   kind: ConfigMap
@@ -356,13 +347,6 @@ objects:
       rename-command FLUSHDB ""
       rename-command FLUSHALL ""
       # End of master configuration
-    replica.conf: |-
-      dir /data
-      slave-read-only yes
-      # User-supplied replica configuration:
-      rename-command FLUSHDB ""
-      rename-command FLUSHALL ""
-      # End of replica configuration
     valkey.conf: |-
       # User-supplied common configuration:
       # Enable AOF
