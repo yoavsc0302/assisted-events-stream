@@ -141,14 +141,14 @@ func (e *EventExtractor) readTarLine(logger *logrus.Entry, tarReader *tar.Reader
 func (e *EventExtractor) extractEvents(logger *logrus.Entry, tmpdir string, eventChannel chan types.EventEnvelope) {
 	eventTypesMatches := []EventTypeMatch{
 		{
-			glob:         "/*/events/cluster.json",
-			eventName:    "ClusterState",
-			clusterIDKey: "id",
-		},
-		{
 			glob:         "/*/events/hosts.json",
 			eventName:    "HostState",
 			clusterIDKey: "cluster_id",
+		},
+		{
+			glob:         "/*/events/cluster.json",
+			eventName:    "ClusterState",
+			clusterIDKey: "id",
 		},
 		{
 			glob:         "/*/events/infraenv.json",

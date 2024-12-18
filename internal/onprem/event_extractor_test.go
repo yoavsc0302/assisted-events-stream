@@ -73,16 +73,16 @@ func assertEventIsInRightSequence(event types.EventEnvelope, eventNumber int, ex
 	payload, ok := event.Event.Payload.(map[string]interface{})
 	Expect(ok).To(Equal(true))
 	assertHasVersions(event.Event)
-	if eventNumber <= expectedClusterEvents {
-		Expect(event.Event.Name).To(Equal("ClusterState"))
-		clusterID, ok := payload["id"].(string)
+	if eventNumber <= expectedHostEvents {
+		Expect(event.Event.Name).To(Equal("HostState"))
+		clusterID, ok := payload["cluster_id"].(string)
 		Expect(ok).To(Equal(true))
 		Expect(clusterID).To(Equal(expectedClusterID))
 		return
 	}
 	if eventNumber <= (expectedClusterEvents + expectedHostEvents) {
-		Expect(event.Event.Name).To(Equal("HostState"))
-		clusterID, ok := payload["cluster_id"].(string)
+		Expect(event.Event.Name).To(Equal("ClusterState"))
+		clusterID, ok := payload["id"].(string)
 		Expect(ok).To(Equal(true))
 		Expect(clusterID).To(Equal(expectedClusterID))
 		return
