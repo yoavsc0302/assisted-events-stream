@@ -191,8 +191,12 @@ objects:
             successThreshold: 1
             timeoutSeconds: 2
           resources:
-            limits: {}
-            requests: {}
+            limits:
+              cpu: ${VALKEY_CPU_LIMIT}
+              memory: ${VALKEY_MEMORY_LIMIT}
+            requests:
+              cpu: ${VALKEY_CPU_REQUEST}
+              memory: ${VALKEY_MEMORY_REQUEST}
           securityContext:
             runAsNonRoot: true
           volumeMounts:
@@ -667,6 +671,14 @@ objects:
         - emptyDir: {}
           name: tmpdir
 parameters:
+- name: VALKEY_MEMORY_REQUEST
+  value: 5Gi
+- name: VALKEY_MEMORY_LIMIT
+  value: 6Gi
+- name: VALKEY_CPU_REQUEST
+  value: 50m
+- name: VALKEY_CPU_LIMIT
+  value: "1"
 - name: ONPREM_LOGLEVEL
   value: info
 - name: LOG_LEVEL

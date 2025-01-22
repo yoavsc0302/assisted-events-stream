@@ -204,8 +204,12 @@
                 - name: valkey
                   containerPort: 6379
               resources:
-                limits: {}
-                requests: {}
+                limits:
+                  cpu: ${VALKEY_CPU_LIMIT}
+                  memory: ${VALKEY_MEMORY_LIMIT}
+                requests:
+                  cpu: ${VALKEY_CPU_REQUEST}
+                  memory: ${VALKEY_MEMORY_REQUEST}
               livenessProbe:
                 initialDelaySeconds: 20
                 periodSeconds: 5

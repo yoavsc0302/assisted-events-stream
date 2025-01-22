@@ -38,3 +38,23 @@
   value:
     name: ONPREM_LOGLEVEL
     value: "info"
+- op: add
+  path: /parameters/0
+  value:
+    name: VALKEY_CPU_LIMIT
+    value: "1"
+- op: add
+  path: /parameters/0
+  value:
+    name: VALKEY_CPU_REQUEST
+    value: "50m"
+- op: add
+  path: /parameters/0
+  value:
+    name: VALKEY_MEMORY_LIMIT
+    value: "6Gi"
+- op: add
+  path: /parameters/0
+  value:
+    name: VALKEY_MEMORY_REQUEST
+    value: "5Gi"
