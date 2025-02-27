@@ -3,6 +3,8 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
@@ -27,14 +29,16 @@ type SnapshotRepositoryInterface interface {
 }
 
 type SnapshotRepository struct {
-	logger *logrus.Logger
-	redis  redis.Cmdable
+	logger     *logrus.Logger
+	redis      redis.Cmdable
+	expiration time.Duration
 }
 
-func NewSnapshotRepository(logger *logrus.Logger, redis redis.Cmdable) *SnapshotRepository {
+func NewSnapshotRepository(logger *logrus.Logger, redis redis.Cmdable, expiration time.Duration) *SnapshotRepository {
 	return &SnapshotRepository{
-		logger: logger,
-		redis:  redis,
+		logger:     logger,
+		redis:      redis,
+		expiration: expiration,
 	}
 }
 
@@ -44,10 +48,21 @@ func (s *SnapshotRepository) hset(ctx context.Context, key string, field string,
 	if event != nil {
 		eventBytes, err = json.Marshal(event.Payload)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
 	}
-	return s.redis.HSet(ctx, key, field, eventBytes).Err()
+
+	err = s.redis.HSet(ctx, key, field, eventBytes).Err()
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+
+	err = s.redis.Expire(ctx, key, s.expiration).Err()
+	if err != nil {
+		return fmt.Errorf("failed to set ttl: %w", err)
+	}
+
+	return nil
 }
 
 func getClustersHKey() string {

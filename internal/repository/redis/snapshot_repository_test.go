@@ -8,6 +8,7 @@ import (
 	"io"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
@@ -16,6 +17,8 @@ import (
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
 	"github.com/sirupsen/logrus"
 )
+
+var defaultDuration = 720 * time.Hour
 
 var _ = Describe("Setting objects", func() {
 	var (
@@ -31,8 +34,9 @@ var _ = Describe("Setting objects", func() {
 		ctx = context.Background()
 		redis, mock = redismock.NewClientMock()
 		snapshotRepo = &SnapshotRepository{
-			logger: logger,
-			redis:  redis,
+			logger:     logger,
+			redis:      redis,
+			expiration: defaultDuration,
 		}
 	})
 	AfterEach(func() {
@@ -42,6 +46,7 @@ var _ = Describe("Setting objects", func() {
 		It("should set it", func() {
 			var event *types.Event
 			mock.Regexp().ExpectHSet("clusters", "c42cfc1d-411a-4cdb-953b-a8e0f3f82375", regexp.QuoteMeta("[]")).SetVal(1)
+			mock.Regexp().ExpectExpire("cluster", defaultDuration).SetVal(true)
 
 			err := snapshotRepo.SetCluster(
 				ctx,
@@ -63,6 +68,7 @@ var _ = Describe("Setting objects", func() {
 			cmp := fmt.Sprintf("%v", eventBytes)
 
 			mock.Regexp().ExpectHSet("clusters", "c42cfc1d-411a-4cdb-953b-a8e0f3f82375", regexp.QuoteMeta(cmp)).SetVal(1)
+			mock.Regexp().ExpectExpire("clusters", defaultDuration).SetVal(true)
 
 			err := snapshotRepo.SetCluster(
 				ctx,
@@ -91,7 +97,7 @@ var _ = Describe("Setting objects", func() {
 				"c42cfc1d-411a-4cdb-953b-a8e0f3f82375",
 				event,
 			)
-			Expect(err).To(Equal(expectedError))
+			Expect(err).To(MatchError(expectedError))
 			Expect(mock.ExpectationsWereMet()).To(BeNil())
 
 		})
@@ -106,6 +112,7 @@ var _ = Describe("Setting objects", func() {
 			cmp := fmt.Sprintf("%v", eventBytes)
 
 			mock.Regexp().ExpectHSet("hosts_c42cfc1d-411a-4cdb-953b-a8e0f3f82375", "8eb96308-9d8b-4293-a4ef-f68dfed549e4", regexp.QuoteMeta(cmp)).SetVal(1)
+			mock.Regexp().ExpectExpire("hosts_c42cfc1d-411a-4cdb-953b-a8e0f3f82375", defaultDuration).SetVal(true)
 
 			err := snapshotRepo.SetHost(
 				ctx,
@@ -127,6 +134,7 @@ var _ = Describe("Setting objects", func() {
 			cmp := fmt.Sprintf("%v", eventBytes)
 
 			mock.Regexp().ExpectHSet("infraenvs_c42cfc1d-411a-4cdb-953b-a8e0f3f82375", "8eb96308-9d8b-4293-a4ef-f68dfed549e4", regexp.QuoteMeta(cmp)).SetVal(1)
+			mock.Regexp().ExpectExpire("infraenvs_c42cfc1d-411a-4cdb-953b-a8e0f3f82375", defaultDuration).SetVal(true)
 
 			err := snapshotRepo.SetInfraEnv(
 				ctx,

@@ -49,6 +49,8 @@ parameters:
   value: "valkey:6379"
 - name: VALKEY_CREDENTIALS_SECRETNAME
   value: redis-credentials # Still redis for prod compatibility
+- name: VALKEY_EXPIRATION
+  value: 720h # 30 days
 - name: OPENSEARCH_USER_SECRET_NAME
   value: elastic-master-credentials
 - name: OPENSEARCH_USER_SECRET_KEY
@@ -387,13 +389,15 @@ objects:
               secretKeyRef:
                 name: ${KAFKA_CREDENTIALS_SECRETNAME}
                 key: ${KAFKA_CREDENTIALS_PASSWORD_KEY}
-          - name: REDIS_ADDRESS
+          - name: VALKEY_ADDRESS
             value: ${VALKEY_ADDRESS}
-          - name: REDIS_PASSWORD
+          - name: VALKEY_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: ${VALKEY_CREDENTIALS_SECRETNAME}
                 key: password
+          - name: VALKEY_EXPIRATION
+            value: ${VALKEY_EXPIRATION}
           - name: OPENSEARCH_INDEX_PREFIX
             value: "${OPENSEARCH_INDEX_PREFIX}"
           - name: OPENSEARCH_ADDRESS
