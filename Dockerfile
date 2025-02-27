@@ -1,5 +1,5 @@
 ## Build
-FROM registry.access.redhat.com/ubi9/go-toolset:1.21 AS build
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS build
 
 USER root
 
@@ -10,7 +10,7 @@ RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=projecti
 RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=onprem ./cmd/onprem/main.go
 
 ## Licenses
-FROM registry.access.redhat.com/ubi9/go-toolset:1.21 AS licenses
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS licenses
 
 ADD . /app
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN go install github.com/google/go-licenses@v1.6.0
 RUN ${HOME}/go/bin/go-licenses save --save_path /tmp/licenses ./...
 
 ## Runtime
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.2
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
 ARG release=main
 ARG version=latest

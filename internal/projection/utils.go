@@ -2,6 +2,7 @@ package projection
 
 import (
 	"context"
+	"fmt"
 
 	opensearch_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/opensearch"
 	redis_repo "github.com/openshift-assisted/assisted-events-streams/internal/repository/redis"
@@ -11,7 +12,11 @@ import (
 
 func NewEnrichedEventsProjectionFromEnv(ctx context.Context, logger *logrus.Logger, ackChannel chan kafka.Message) (*EnrichedEventsProjection, error) {
 	enrichedEventRepository := opensearch_repo.NewEnrichedEventRepositoryFromEnv(logger, ackChannel)
-	snapshotRepository := redis_repo.NewSnapshotRepositoryFromEnv(ctx, logger)
+	snapshotRepository, err := redis_repo.NewSnapshotRepositoryFromEnv(ctx, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create snapshot repository: %w", err)
+	}
+
 	return NewEnrichedEventsProjection(
 		logger,
 		snapshotRepository,
