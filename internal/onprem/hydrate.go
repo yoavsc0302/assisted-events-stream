@@ -3,7 +3,6 @@ package onprem
 import (
 	"context"
 	"encoding/json"
-	"sync"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/openshift-assisted/assisted-events-streams/internal/types"
@@ -113,15 +112,9 @@ func (h *OnPremEventsHydrator) extractEvents(filename string, msg kafka.Message)
 		return
 	}
 
-	var wg sync.WaitGroup
 	for event := range eventChannel {
-		wg.Add(1)
-		go func(event types.EventEnvelope) {
-			h.notifyEvent(event)
-			wg.Done()
-		}(event)
+		h.notifyEvent(event)
 	}
-	wg.Wait()
 	h.ackChannel <- msg
 }
 
