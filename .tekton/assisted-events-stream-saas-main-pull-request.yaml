@@ -519,7 +519,6 @@ spec:
       runAfter:
       - build-container
       taskRef:
-        resolver: bundles
         params:
         - name: name
           value: rpms-signature-scan
@@ -527,11 +526,13 @@ spec:
           value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:998b5466417c324aea94d3e8b302c558aeb13f746976d89a4ff85f1b84a42c2b
         - name: kind
           value: task
+        resolver: bundles
     workspaces:
     - name: workspace
     - name: git-auth
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-assisted-events-stream-saas-main
   workspaces:
   - name: workspace
     volumeClaimTemplate:
