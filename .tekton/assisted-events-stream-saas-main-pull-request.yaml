@@ -345,6 +345,11 @@ spec:
     - name: sast-snyk-check
       runAfter:
       - clone-repository
+      params:
+      - name: image-digest
+        value: $(tasks.build-container.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-container.results.IMAGE_URL)
       taskRef:
         params:
         - name: name
@@ -388,6 +393,8 @@ spec:
       params:
       - name: image-url
         value: $(tasks.build-container.results.IMAGE_URL)
+      - name: image-digest
+        value: $(tasks.build-container.results.IMAGE_DIGEST)
       - name: IMAGE
         value: $(params.output-image)
       - name: DOCKERFILE
@@ -476,6 +483,8 @@ spec:
       params:
       - name: image-url
         value: $(tasks.build-container.results.IMAGE_URL)
+      - name: image-digest
+        value: $(tasks.build-container.results.IMAGE_DIGEST)
       runAfter:
       - build-container
       taskRef:
