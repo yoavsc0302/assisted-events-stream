@@ -1,11 +1,11 @@
-FROM registry.ci.openshift.org/openshift/release:golang-1.21
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS build
 
 USER root
 
 ENV GOFLAGS=""
 ENV GOPATH="/go"
-ENV GOROOT=/usr/local/go
-ENV GOBIN="/usr/local/go/bin"
+ENV GOROOT=/usr/lib/golang
+ENV GOBIN="$GOROOT/bin"
 ENV PATH=$PATH:$GOBIN:$GOROOT/bin
 
 RUN go install github.com/golang/mock/mockgen@v1.6.0 &&\
@@ -18,5 +18,9 @@ RUN curl -sS -Lo ./kind https://kind.sigs.k8s.io/dl/v0.12.0/kind-linux-amd64 &&\
 
 
 ENV GOFLAGS=-mod=vendor
+ENV GOCACHE=/tmp/go-build
+ENV GOMODCACHE=/tmp/go-mod-cache
+ENV GOLANGCI_LINT_CACHE=/tmp/.golangci-cache
+
 COPY --from=quay.io/openshift/origin-cli:4.10 /usr/bin/oc /usr/bin/kubectl /usr/bin/
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/bin v1.64.7
