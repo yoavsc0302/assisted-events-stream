@@ -1,5 +1,5 @@
 ## Build
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS build
+FROM registry.access.redhat.com/ubi9/go-toolset:1.23 AS build
 
 USER root
 
@@ -10,7 +10,7 @@ RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=projecti
 RUN cd /app && CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o=onprem ./cmd/onprem/main.go
 
 ## Licenses
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS licenses
+FROM registry.access.redhat.com/ubi9/go-toolset:1.23 AS licenses
 
 ADD . /app
 WORKDIR /app
