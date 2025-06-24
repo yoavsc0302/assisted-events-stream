@@ -14,33 +14,33 @@ run:
 
 # output configuration options
 output:
-  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
-  format: colored-line-number
-
   # print lines of code with issue, default is true
   print-issued-lines: true
 
   # print linter name in the end of issue text, default is true
   print-linter-name: true
 
+issues:
   # make issues output unique by line, default is true
   uniq-by-line: true
 
 linters:
   enable:
-    - megacheck
+    - gosimple
+    - staticcheck
+    - unused
     - govet
     - gocyclo
     - gofmt
     - unconvert
     - gci
     - goimports
-    - exportloopref
+    - copyloopvar
 
 linters-settings:
   govet:
-    check-shadowing: true
-
+    enable:
+      - shadow
     settings:
       printf:
         funcs:
